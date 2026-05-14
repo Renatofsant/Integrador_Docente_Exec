@@ -542,7 +542,7 @@ if realizar_login():
                 st.info("Este módulo dispara a extração automática de alunos e turmas diretamente do portal oficial.")
                 with st.form("form_robo"):
                     l_see = st.text_input("Login/CPF SEEDUC")
-                    p_see = st.text_input("Senha Portal", type="senha")
+                    p_see = st.text_input("Senha Portal", type="password")
                     e_alv = st.selectbox("Escola Alvo para Carga", e_df['nome'])
                     if st.form_submit_button("🚀 INICIAR EXTRAÇÃO TANQUE DE GUERRA"):
                         st.warning(f"Comando enviado. O robô irá processar a unidade: {e_alv}")
