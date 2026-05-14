@@ -20,15 +20,20 @@ st.set_page_config(
 # ==============================================================================
 # 2. INFRAESTRUTURA DE CONEXÃO (BLINDAGEM DE BANCO)
 # ==============================================================================
+# ==============================================================================
+# 2. INFRAESTRUTURA DE CONEXÃO (VERSÃO DIRETA)
+# ==============================================================================
 def conectar_banco():
     """
-    Mantém a conexão persistente no estado da sessão.
-    Garante que o Integrador não perca o link com o Supabase durante o uso.
+    Mantém a conexão persistente usando a URI direta para evitar erro de Secrets.
     """
+    # Use a mesma URI que funcionou no seu admin_painel.py
+    DB_URI_DIRETA = "postgresql://postgres.upjxocjacpsdtdcigqfe:Schrodinger48Rfs2321@aws-1-sa-east-1.pooler.supabase.com:6543/postgres"
+    
     if "conn" not in st.session_state or st.session_state.conn is None or st.session_state.conn.closed != 0:
         try:
-            # Conexão via URI Segura (Secrets)
-            st.session_state.conn = psycopg2.connect(st.secrets["DB_URI"])
+            # Conexão direta (Sem depender do st.secrets por enquanto)
+            st.session_state.conn = psycopg2.connect(DB_URI_DIRETA)
         except Exception as e:
             st.error(f"❌ Falha crítica na conexão Cloud: {e}")
             return None
