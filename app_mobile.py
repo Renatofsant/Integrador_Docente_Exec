@@ -1,0 +1,506 @@
+import streamlit as st
+import psycopg2
+import pandas as pd
+from psycopg2 import extras
+import time
+
+# ==============================================================================
+# 1. CONFIGURAÇÃO DE PÁGINA E METADADOS (PADRÃO PREMIUM)
+# ==============================================================================
+st.set_page_config(
+    page_title="SGI Projetta - Renato Santos",
+    page_icon="📊",
+    layout="centered",
+    initial_sidebar_state="expanded"
+)
+
+
+# [cite: 12-17]
+#
+# ==============================================================================
+# 2. INFRAESTRUTURA DE CONEXÃO (BLINDAGEM DE BANCO)
+# ==============================================================================
+def conectar_banco():
+    """
+    Mantém a conexão persistente no estado da sessão.
+    Garante que o Integrador não perca o link com o Supabase durante o uso.
+    """
+    if "conn" not in st.session_state or st.session_state.conn is None or st.session_state.conn.closed != 0:
+        try:
+            # Conexão via URI Segura (Secrets)
+            st.session_state.conn = psycopg2.connect(st.secrets["DB_URI"])
+        except Exception as e:
+            st.error(f"❌ Falha crítica na conexão Cloud: {e}")
+            return None
+    return st.session_state.conn
+
+
+# [cite: 23-32]
+#
+# ==============================================================================
+# 3. IDENTIDADE VISUAL E CSS (ESTILO SAAS INTEGRADO)
+# ==============================================================================
+st.markdown("""
+    <style>
+    /* Fundo Principal */
+    .stApp {
+        background: #0F172A;
+    }
+
+    /* --- AJUSTE FINO DE UX: CURSOR POINTER --- */
+
+    /* 1. Força o ponteiro em todos os Selectboxes e áreas de clique do dropdown */
+    div[data-baseweb="select"], 
+    div[data-baseweb="select"] *, 
+    div[role="button"], 
+    div[role="button"] *,
+    .stSelectbox div {
+        cursor: pointer !important;
+    }
+
+    /* 2. Garante que as opções da lista quando aberta também tenham o ponteiro */
+    li[role="option"], 
+    li[role="option"] * {
+        cursor: pointer !important;
+    }
+
+    /* 3. Mãozinha nas células editáveis da tabela (Data Editor) */
+    [data-testid="stTable"] div, 
+    .stDataEditor div[role="gridcell"],
+    .stDataEditor div[role="columnheader"] {
+        cursor: pointer !important;
+    }
+
+    /* 4. Feedback visual nos dropdowns ao passar o mouse */
+    div[data-baseweb="select"]:hover {
+        border-color: #3b82f6 !important;
+        transition: all 0.2s ease-in-out;
+    }
+
+    /* Container do Formulário de Login */
+    [data-testid="stForm"] {
+        background-color: #bbd8ea;
+        padding: 45px;
+        border-radius: 25px;
+        box-shadow: 0 20px 45px rgba(0,0,0,0.5);
+        border: 2px solid #87CEFA;
+    }
+
+    /* Estilização de Labels e Textos Internos do Form */
+    [data-testid="stForm"] label p {
+        color: #1e293b !important;
+        font-weight: 700 !important;
+        font-size: 16px;
+    }
+
+    /* Inputs Customizados */
+    [data-testid="stForm"] input {
+        color: #0F172A !important;
+        background-color: #f8fafc !important;
+        border: 2px solid #94a3b8 !important;
+        border-radius: 12px !important;
+        padding: 12px !important;
+    }
+
+    /* Títulos de Login */
+    .login-title {
+        color: #1e3a8a;
+        font-family: 'Urbanist', sans-serif;
+        font-weight: 900;
+        text-align: center;
+        font-size: 36px;
+        margin-bottom: 8px;
+    }
+
+    .login-subtitle {
+        color: #334155;
+        text-align: center;
+        font-size: 15px;
+        margin-bottom: 25px;
+        font-weight: 500;
+    }
+
+    /* Botão de Ação Principal */
+    .stButton>button {
+        width: 100%;
+        border-radius: 12px;
+        height: 3.8em;
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        color: white !important;
+        font-weight: 800;
+        font-size: 18px;
+        border: none;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+    }
+
+    .stButton>button:hover {
+        transform: scale(1.02);
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.5);
+    }
+
+    /* Cursor de Mãozinha (UX Dinâmica) */
+    div[data-baseweb="select"], div[role="button"], .stDataEditor div[role="gridcell"] {
+        cursor: pointer !important;
+    }
+
+    /* Estilo da Área Logada */
+    .main-title {
+        color: #F8FAFC;
+        font-weight: 800;
+        font-size: 2.5rem;
+        border-left: 8px solid #3b82f6;
+        padding-left: 20px;
+        margin-bottom: 30px;
+    }
+    </style>
+""", unsafe_allow_html=True)
+
+
+# [cite: 37-136]
+#
+# ==============================================================================
+# 4. SISTEMA DE AUTENTICAÇÃO (CONTROLE DE ACESSO)
+# ==============================================================================
+def realizar_login():
+    if "autenticado" not in st.session_state:
+        st.session_state.autenticado = False
+
+    if not st.session_state.autenticado:
+        st.write("<br><br>", unsafe_allow_html=True)
+
+        with st.form("login_form"):
+            st.markdown("<div class='login-title'>📊 Integrador Docente</div>", unsafe_allow_html=True)
+            st.markdown("<div class='login-subtitle'>Portal Oficial de Lançamento • Renato Santos</div>",
+                        unsafe_allow_html=True)
+            st.write("---")
+
+            user = st.text_input("Usuário / Login")
+            password = st.text_input("Senha de Acesso", type="password")
+
+            st.write("<br>", unsafe_allow_html=True)
+            submit = st.form_submit_button("Acessar Painel Integrador")
+
+            if submit:
+                conn = conectar_banco()
+                if conn:
+                    # Busca robusta incluindo o username (identificador único no banco)
+                    query = "SELECT nome, perfil, username FROM usuarios WHERE username = %s AND password = %s"
+                    cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
+                    cursor.execute(query, (user, password))
+                    user_data = cursor.fetchone()
+                    cursor.close()
+
+                    if user_data:
+                        st.session_state.autenticado = True
+                        st.session_state.user_nome = user_data['nome']
+                        st.session_state.user_perfil = user_data['perfil']
+                        st.session_state.username = user_data['username']
+                        st.rerun()
+                    else:
+                        st.error("❌ Usuário ou senha incorretos. Verifique suas credenciais.")
+
+        st.stop()
+    return True
+
+
+# [cite: 142-175]
+#
+# ==============================================================================
+# 5. FLUXO PRINCIPAL (APLICAÇÃO LOGADA)
+# ==============================================================================
+if realizar_login():
+    # Cores específicas para a área interna
+    st.markdown("""
+        <style>
+        h1, h2, h3, h4, label, p { color: #F1F5F9 !important; }
+        </style>
+    """, unsafe_allow_html=True)
+    # [cite: 180-183]
+
+    # --- SIDEBAR (NAVEGAÇÃO) ---
+    st.sidebar.markdown(f"## 👤 {st.session_state.user_nome}")
+    st.sidebar.write(f"Nível: **{st.session_state.user_perfil.capitalize()}**")
+    st.sidebar.write("---")
+
+    opcoes_menu = ["📊 Lançamento de Notas"]
+    if st.session_state.user_perfil == 'admin':
+        opcoes_menu.append("⚙️ Gestão Administrativa")
+
+    escolha = st.sidebar.selectbox("O que deseja fazer?", opcoes_menu)
+
+    st.sidebar.write("<br><br>", unsafe_allow_html=True)
+    if st.sidebar.button("🔴 Sair do Sistema"):
+        st.session_state.autenticado = False
+        st.rerun()
+
+    conn = conectar_banco()
+
+    if conn:
+        # ======================================================================
+        # 6. MÓDULO: LANÇAMENTO DE NOTAS (ISOLADO POR PROFESSOR)
+        # ======================================================================
+        if escolha == "📊 Lançamento de Notas":
+            try:
+                st.markdown("<h1 class='main-title'>📊 Lançamento de Notas</h1>", unsafe_allow_html=True)
+
+                # FILTRO DE ESCOLAS: Apenas as vinculadas ao professor logado
+                if st.session_state.user_perfil == 'admin':
+                    query_esc = "SELECT id, nome FROM escolas ORDER BY nome"
+                else:
+                    query_esc = f"""
+                        SELECT DISTINCT e.id, e.nome 
+                        FROM escolas e
+                        JOIN vinculo_professor_turma v ON e.id = v.escola_id
+                        WHERE v.professor_username = '{st.session_state.username}'
+                        ORDER BY e.nome
+                    """
+
+                escolas_df = pd.read_sql(query_esc, conn)
+
+                if not escolas_df.empty:
+                    c1, c2 = st.columns([2, 1])
+                    with c1:
+                        escola_nome = st.selectbox("🏫 Escolha a Escola", escolas_df['nome'])
+                        id_escola = escolas_df.loc[escolas_df['nome'] == escola_nome, 'id'].values[0]
+                    with c2:
+                        trimestre_selecionado = st.selectbox("📅 Trimestre Target", [1, 2, 3])
+
+                    # FILTRO DE TURMAS: Blindagem por Vínculo
+                    if st.session_state.user_perfil == 'admin':
+                        query_turmas = f"SELECT DISTINCT turma FROM alunos WHERE escola_id = {id_escola} AND turma IS NOT NULL ORDER BY turma"
+                    else:
+                        query_turmas = f"""
+                            SELECT DISTINCT turma FROM vinculo_professor_turma 
+                            WHERE professor_username = '{st.session_state.username}' 
+                            AND escola_id = {id_escola}
+                            ORDER BY turma
+                        """
+
+                    turmas_df = pd.read_sql(query_turmas, conn)
+
+                    if not turmas_df.empty:
+                        turma_nome = st.selectbox("👥 Selecione a Turma", turmas_df['turma'])
+
+                        # QUERY DE DADOS: O Coração da Blindagem (Left Join + Filtro de Username)
+                        query_dados = f"""
+                            SELECT a.id, a.nome_completo as "Aluno", 
+                                   COALESCE(n.av1, 0.0) as "AV1", 
+                                   COALESCE(n.av2, 0.0) as "AV2", 
+                                   COALESCE(n.av3, 0.0) as "AV3", 
+                                   COALESCE(n.recuperacao, 0.0) as "RECUP",
+                                   (COALESCE(n.av1, 0.0) + COALESCE(n.av2, 0.0) + COALESCE(n.av3, 0.0)) as "Somatório",
+                                   COALESCE(n.faltas, 0) as "Faltas"
+                            FROM alunos a
+                            LEFT JOIN notas_bimestre n ON a.id = n.aluno_id 
+                                 AND n.trimestre = {trimestre_selecionado}
+                                 AND n.professor_username = '{st.session_state.username}'
+                            WHERE a.escola_id = {id_escola} 
+                              AND a.turma = '{turma_nome}' 
+                              AND a.status = 'Ativo'
+                            ORDER BY a.nome_completo
+                        """
+
+                        df = pd.read_sql(query_dados, conn)
+                        # Limpeza de linhas técnicas do portal
+                        df = df[~df['Aluno'].str.contains("Aulas previstas|Matrícula", na=False)]
+
+                        # --- MÉTRICAS DE PERFORMANCE DA TURMA ---
+                        if not df.empty:
+                            st.write("---")
+                            total_a = len(df)
+                            notas_l = df[df['AV1'] > 0].shape[0]
+                            percentual = (notas_l / total_a) if total_a > 0 else 0
+
+                            met1, met2, met3 = st.columns(3)
+                            met1.metric("Total Alunos", total_a)
+                            met2.metric("Notas Sincronizadas", notas_l, f"{notas_l - total_a} pendentes")
+                            met3.metric("Média Geral", f"{df['Somatório'].mean():.1f} pts")
+
+                            st.write(f"**Progresso do Lançamento: {percentual:.0%}**")
+                            st.progress(percentual)
+                            st.write("<br>", unsafe_allow_html=True)
+
+                        # --- EDITOR DE DADOS (DATA EDITOR PREMIUM) ---
+                        edited_df = st.data_editor(
+                            df,
+                            column_config={
+                                "id": None,
+                                "Aluno": st.column_config.TextColumn("Nome do Aluno", disabled=True, width="large"),
+                                "AV1": st.column_config.NumberColumn("AV1", format="%.1f", min_value=0.0,
+                                                                     max_value=10.0),
+                                "AV2": st.column_config.NumberColumn("AV2", format="%.1f", min_value=0.0,
+                                                                     max_value=10.0),
+                                "AV3": st.column_config.NumberColumn("AV3", format="%.1f", min_value=0.0,
+                                                                     max_value=10.0),
+                                "RECUP": st.column_config.NumberColumn("🔄 REC", format="%.1f", min_value=0.0,
+                                                                       max_value=10.0),
+                                "Somatório": st.column_config.NumberColumn("Total", disabled=True, format="%.1f"),
+                                "Faltas": st.column_config.NumberColumn("Faltas", step=1)
+                            },
+                            hide_index=True,
+                            use_container_width=True,
+                            key=f"ed_v2_{id_escola}_{turma_nome}_{st.session_state.username}"
+                        )
+
+                        # --- LÓGICA DE SALVAMENTO (UPSERT BLINDADO) ---
+                        st.write("---")
+                        if st.button("💾 CONFIRMAR E SALVAR NO SUPABASE"):
+                            cursor = conn.cursor()
+                            try:
+                                for _, row in edited_df.iterrows():
+                                    somatorio = row['AV1'] + row['AV2'] + row['AV3']
+
+                                    # REGRA TANQUE DE GUERRA: MAIOR NOTA
+                                    # A média final considera o maior valor entre o somatório e a recuperação
+                                    if row['RECUP'] > somatorio:
+                                        media_final = row['RECUP']
+                                    else:
+                                        media_final = somatorio
+
+                                    cursor.execute("""
+                                        INSERT INTO notas_bimestre (
+                                            aluno_id, av1, av2, av3, recuperacao, 
+                                            media_final, faltas, trimestre, professor_username
+                                        )
+                                        VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
+                                        ON CONFLICT (aluno_id, trimestre, professor_username) 
+                                        DO UPDATE SET 
+                                            av1 = EXCLUDED.av1, av2 = EXCLUDED.av2, av3 = EXCLUDED.av3,
+                                            recuperacao = EXCLUDED.recuperacao, media_final = EXCLUDED.media_final, 
+                                            faltas = EXCLUDED.faltas;
+                                    """, (
+                                        int(row['id']), row['AV1'], row['AV2'], row['AV3'],
+                                        row['RECUP'], media_final, row['Faltas'],
+                                        trimestre_selecionado, st.session_state.username
+                                    ))
+                                conn.commit()
+                                st.success(f"✅ Sincronização da Turma {turma_nome} realizada com sucesso!")
+                                st.balloons()
+                            except Exception as e:
+                                st.error(f"❌ Erro ao salvar: {e}")
+                                conn.rollback()
+                            finally:
+                                cursor.close()
+
+                        # --- EXPORTAÇÃO E RELATÓRIOS ---
+                        st.write("---")
+                        st.subheader("📄 Relatórios")
+                        exp1, exp2 = st.columns(2)
+                        with exp1:
+                            csv_data = edited_df.to_csv(index=False).encode('utf-8')
+                            st.download_button("📥 Baixar CSV", csv_data, f"SGI_{turma_nome}.csv", "text/csv")
+                        with exp2:
+                            # HTML para Impressão Rápida
+                            html_cont = f"<h2>{escola_nome}</h2><h3>Turma {turma_nome}</h3>"
+                            st.download_button("🖨️ Relatório HTML", html_cont, "relatorio.html", "text/html")
+                    else:
+                        st.info(f"💡 Você ainda não possui turmas vinculadas na escola **{escola_nome}**.")
+                else:
+                    st.warning("⚠️ Nenhuma instituição vinculada ao seu perfil de docente.")
+
+            except Exception as e:
+                st.error(f"Ocorreu um erro no módulo de notas: {e}")
+                st.session_state.conn = None
+
+        # ======================================================================
+        # 7. MÓDULO: GESTÃO ADMINISTRATIVA (PAINEL DO RENATO)
+        # ======================================================================
+        elif escolha == "⚙️ Gestão Administrativa":
+            st.markdown("<h1 class='main-title'>⚙️ Gestão Administrativa</h1>", unsafe_allow_html=True)
+
+            abas = st.tabs(["🏫 Escolas", "👥 Alunos", "👤 Professores", "🔗 Vínculos", "🚀 Carga SEEDUC"])
+
+            # -- ABA: ESCOLAS --
+            with abas[0]:
+                st.subheader("Cadastro de Unidades")
+                with st.form("form_esc"):
+                    nome_n = st.text_input("Nome da Escola / Colégio")
+                    if st.form_submit_button("Cadastrar Unidade"):
+                        if nome_n:
+                            cursor = conn.cursor()
+                            cursor.execute("INSERT INTO escolas (nome) VALUES (%s)", (nome_n,))
+                            conn.commit()
+                            st.success(f"Unidade '{nome_n}' inserida no banco.")
+                        else:
+                            st.warning("O nome não pode estar vazio.")
+
+            # -- ABA: ALUNOS --
+            with abas[1]:
+                st.subheader("Manutenção de Alunos")
+                with st.form("form_alu"):
+                    escs_df = pd.read_sql("SELECT id, nome FROM escolas ORDER BY nome", conn)
+                    s_esc = st.selectbox("Selecione a Escola", escs_df['nome'])
+                    id_e = escs_df.loc[escs_df['nome'] == s_esc, 'id'].values[0]
+                    n_a = st.text_input("Nome Completo do Aluno")
+                    t_a = st.text_input("Turma (ex: 1001)")
+                    if st.form_submit_button("Registrar Aluno"):
+                        cursor = conn.cursor()
+                        cursor.execute(
+                            "INSERT INTO alunos (nome_completo, escola_id, turma, status) VALUES (%s,%s,%s,'Ativo')",
+                            (n_a, int(id_e), t_a))
+                        conn.commit();
+                        st.success(f"Aluno {n_a} cadastrado com sucesso.")
+
+            # -- ABA: PROFESSORES --
+            with abas[2]:
+                st.subheader("Gerenciar Docentes")
+                with st.form("form_prof"):
+                    u_log = st.text_input("Username (Login SGI)")
+                    p_log = st.text_input("Senha SGI")
+                    n_log = st.text_input("Nome do Professor")
+                    p_perf = st.selectbox("Perfil de Acesso", ["professor", "admin"])
+                    if st.form_submit_button("Criar Acesso"):
+                        cursor = conn.cursor()
+                        cursor.execute("INSERT INTO usuarios (username, password, nome, perfil) VALUES (%s,%s,%s,%s)",
+                                       (u_log, p_log, n_log, p_perf))
+                        conn.commit();
+                        st.success(f"Conta de {n_log} criada.")
+
+            # -- ABA: VÍNCULOS (A Chave do SaaS) --
+            with abas[3]:
+                st.subheader("Atribuição de Turmas e Vínculos")
+                p_df = pd.read_sql("SELECT username, nome FROM usuarios WHERE perfil = 'professor'", conn)
+                e_df = pd.read_sql("SELECT id, nome FROM escolas ORDER BY nome", conn)
+
+                if not p_df.empty and not e_df.empty:
+                    sel_p = st.selectbox("Escolha o Professor", p_df['username'],
+                                         format_func=lambda x: p_df.loc[p_df['username'] == x, 'nome'].values[0])
+                    sel_e_n = st.selectbox("Unidade Escolar", e_df['nome'])
+                    sel_e_id = e_df.loc[e_df['nome'] == sel_e_n, 'id'].values[0]
+
+                    vinc_id = st.text_input("Vínculo SEEDUC (Matrícula ex: 1, 2, 3)")
+
+                    t_disp = pd.read_sql(
+                        f"SELECT DISTINCT turma FROM alunos WHERE escola_id = {sel_e_id} ORDER BY turma", conn)
+                    if not t_disp.empty:
+                        ts = st.multiselect("Selecione as Turmas deste Docente", t_disp['turma'])
+                        if st.button("💾 Confirmar Vínculos"):
+                            if vinc_id:
+                                cursor = conn.cursor()
+                                for t_item in ts:
+                                    cursor.execute("""
+                                        INSERT INTO vinculo_professor_turma (professor_username, escola_id, turma, vinculo_id)
+                                        VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING
+                                    """, (sel_p, int(sel_e_id), t_item, vinc_id))
+                                conn.commit();
+                                st.success("Vínculos processados!")
+                            else:
+                                st.error("Informe o Vínculo (Matrícula) antes de salvar.")
+                    else:
+                        st.info("Não há turmas cadastradas para esta escola.")
+
+            # -- ABA: CARGA DE DADOS (ROBÔ) --
+            with abas[4]:
+                st.subheader("🚀 Integração Robótica SEEDUC")
+                st.info("Este módulo dispara a extração automática de alunos e turmas diretamente do portal oficial.")
+                with st.form("form_robo"):
+                    l_see = st.text_input("Login/CPF SEEDUC")
+                    p_see = st.text_input("Senha Portal", type="password")
+                    e_alv = st.selectbox("Escola Alvo para Carga", e_df['nome'])
+                    if st.form_submit_button("🚀 INICIAR EXTRAÇÃO TANQUE DE GUERRA"):
+                        st.warning(f"Comando enviado. O robô irá processar a unidade: {e_alv}")
+                        # Lógica de disparo do script Selenium aqui [cite: 410]
+
+# ==============================================================================
+# FIM DO CÓDIGO - SGI INTEGRADOR DOCENTE V2.0
+# ==============================================================================
