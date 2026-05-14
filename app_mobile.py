@@ -189,7 +189,7 @@ def realizar_login():
                 conn = conectar_banco()
                 if conn:
                     # Busca robusta incluindo o username (identificador único no banco)
-                    query = "SELECT nome, username, ativo FROM usuarios_integrador WHERE username = %s AND senha = %s"
+                    query = "SELECT nome, username, ativo FROM usuarios_integrador WHERE username = %s AND senha = %s AND ativo = TRUE"
                     cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
                     cursor.execute(query, (user, senha))
                     user_data = cursor.fetchone()
