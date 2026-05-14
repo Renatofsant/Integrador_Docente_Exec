@@ -189,23 +189,23 @@ def realizar_login():
             if submit:
                 conn = conectar_banco()
                 if conn:
-                    # AQUI É O SEGREDO: O banco só retorna algo se estiver ATIVO
-                    query = "SELECT nome, username, ativo FROM usuarios_integrador WHERE username = %s AND senha = %s AND ativo = TRUE"
+                    # Busca robusta incluindo o username (identificador único no banco)
+                    query = "SELECT nome, username, ativo FROM usuarios_integrador WHERE username = %s AND senha = %s"
                     cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
-                    cursor.execute(query, (user.lower().strip(), senha))
+                    cursor.execute(query, (user, senha))
                     user_data = cursor.fetchone()
                     cursor.close()
-            
+
                     if user_data:
-                        # Se entrou aqui, é porque usuário/senha batem E está ativo no banco
-                        st.session_state.autenticado = True
-                        st.session_state.user_nome = user_data['nome']
-                        st.session_state.username = user_data['username']
-                        st.session_state.user_perfil = 'professor' if user_data['username'] != 'renato' else 'admin'
-                        st.rerun()
-                    else:
-                        # Se o banco não retornou nada, ou a senha errou ou o status é FALSE
-                        st.error("❌ Acesso negado. Usuário/senha incorretos ou conta desativada.")
+                        if user_data['ativo']:  # Verifica se o professor não está bloqueado
+                            st.session_state.autenticado = True
+                            st.session_state.user_nome = user_data['nome']
+                            st.session_state.username = user_data['username']
+                            # Como a tabela nova não tem 'perfil', definimos como professor por padrão
+                            st.session_state.user_perfil = 'professor' if user_data['username'] != 'renato' else 'admin'
+                            st.rerun()
+                        else:
+                            st.error("🚫 Sua conta está inativa. Entre em contato com o suporte.")
                     else:
                         st.error("❌ Usuário ou senha incorretos.")
         st.stop()
