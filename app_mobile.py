@@ -175,7 +175,7 @@ def realizar_login():
             st.write("---")
 
             user = st.text_input("Usuário / Login")
-            password = st.text_input("Senha de Acesso", type="password")
+            senha = st.text_input("Senha de Acesso", type="password")
 
             st.write("<br>", unsafe_allow_html=True)
             submit = st.form_submit_button("Acessar Painel Integrador")
@@ -184,27 +184,28 @@ def realizar_login():
                 conn = conectar_banco()
                 if conn:
                     # Busca robusta incluindo o username (identificador único no banco)
-                    query = "SELECT nome, perfil, username FROM usuarios WHERE username = %s AND password = %s"
+                    query = "SELECT nome, username, ativo FROM usuarios_integrador WHERE username = %s AND senha = %s"
                     cursor = conn.cursor(cursor_factory=extras.RealDictCursor)
-                    cursor.execute(query, (user, password))
+                    cursor.execute(query, (user, senha))
                     user_data = cursor.fetchone()
                     cursor.close()
 
                     if user_data:
-                        st.session_state.autenticado = True
-                        st.session_state.user_nome = user_data['nome']
-                        st.session_state.user_perfil = user_data['perfil']
-                        st.session_state.username = user_data['username']
-                        st.rerun()
+                        if user_data['ativo']:  # Verifica se o professor não está bloqueado
+                            st.session_state.autenticado = True
+                            st.session_state.user_nome = user_data['nome']
+                            st.session_state.username = user_data['username']
+                            # Como a tabela nova não tem 'perfil', definimos como professor por padrão
+                            st.session_state.user_perfil = 'professor' if user_data['username'] != 'renato' else 'admin'
+                            st.rerun()
+                        else:
+                            st.error("🚫 Sua conta está inativa. Entre em contato com o suporte.")
                     else:
-                        st.error("❌ Usuário ou senha incorretos. Verifique suas credenciais.")
-
+                        st.error("❌ Usuário ou senha incorretos.")
         st.stop()
     return True
 
 
-# [cite: 142-175]
-#
 # ==============================================================================
 # 5. FLUXO PRINCIPAL (APLICAÇÃO LOGADA)
 # ==============================================================================
@@ -451,15 +452,15 @@ if realizar_login():
                     p_perf = st.selectbox("Perfil de Acesso", ["professor", "admin"])
                     if st.form_submit_button("Criar Acesso"):
                         cursor = conn.cursor()
-                        cursor.execute("INSERT INTO usuarios (username, password, nome, perfil) VALUES (%s,%s,%s,%s)",
-                                       (u_log, p_log, n_log, p_perf))
+                        cursor.execute("INSERT INTO usuarios_integrador (username, senha, nome, ativo) VALUES (%s,%s,%s,TRUE)",
+                                       (u_log.lower().strip(), p_log, n_log))
                         conn.commit();
                         st.success(f"Conta de {n_log} criada.")
 
             # -- ABA: VÍNCULOS (A Chave do SaaS) --
             with abas[3]:
                 st.subheader("Atribuição de Turmas e Vínculos")
-                p_df = pd.read_sql("SELECT username, nome FROM usuarios WHERE perfil = 'professor'", conn)
+                p_df = pd.read_sql("SELECT username, nome FROM usuarios_integrador WHERE perfil = 'professor'", conn)
                 e_df = pd.read_sql("SELECT id, nome FROM escolas ORDER BY nome", conn)
 
                 if not p_df.empty and not e_df.empty:
@@ -495,7 +496,7 @@ if realizar_login():
                 st.info("Este módulo dispara a extração automática de alunos e turmas diretamente do portal oficial.")
                 with st.form("form_robo"):
                     l_see = st.text_input("Login/CPF SEEDUC")
-                    p_see = st.text_input("Senha Portal", type="password")
+                    p_see = st.text_input("Senha Portal", type="senha")
                     e_alv = st.selectbox("Escola Alvo para Carga", e_df['nome'])
                     if st.form_submit_button("🚀 INICIAR EXTRAÇÃO TANQUE DE GUERRA"):
                         st.warning(f"Comando enviado. O robô irá processar a unidade: {e_alv}")
