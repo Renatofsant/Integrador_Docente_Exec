@@ -442,20 +442,61 @@ if realizar_login():
                         conn.commit();
                         st.success(f"Aluno {n_a} cadastrado com sucesso.")
 
-            # -- ABA: PROFESSORES --
+            # -- ABA: PROFESSORES (UNIFICADA E FUNCIONAL) --
             with abas[2]:
-                st.subheader("Gerenciar Docentes")
-                with st.form("form_prof"):
-                    u_log = st.text_input("Username (Login SGI)")
-                    p_log = st.text_input("Senha SGI")
-                    n_log = st.text_input("Nome do Professor")
-                    p_perf = st.selectbox("Perfil de Acesso", ["professor", "admin"])
-                    if st.form_submit_button("Criar Acesso"):
-                        cursor = conn.cursor()
-                        cursor.execute("INSERT INTO usuarios_integrador (username, senha, nome, ativo) VALUES (%s,%s,%s,TRUE)",
-                                       (u_log.lower().strip(), p_log, n_log))
-                        conn.commit();
-                        st.success(f"Conta de {n_log} criada.")
+                st.subheader("👤 Central de Gerenciamento de Docentes")
+
+                # Formulário de Cadastro (O que está funcionando perfeito)
+                with st.expander("➕ Cadastrar Novo Professor", expanded=False):
+                    with st.form("form_prof_unificado"):
+                        u_log = st.text_input("Username (Login)")
+                        p_log = st.text_input("Senha Inicial", type="password")
+                        n_log = st.text_input("Nome Completo")
+                        if st.form_submit_button("🚀 Criar Conta e Liberar Acesso"):
+                            if u_log and p_log and n_log:
+                                try:
+                                    cursor = conn.cursor()
+                                    # Inserindo na tabela oficial com status ATIVO por padrão
+                                    cursor.execute(
+                                        "INSERT INTO usuarios_integrador (username, senha, nome, ativo) VALUES (%s,%s,%s,TRUE)",
+                                        (u_log.lower().strip(), p_log, n_log)
+                                    )
+                                    conn.commit()
+                                    st.success(f"✅ Professor {n_log} cadastrado com sucesso!")
+                                    st.rerun()
+                                except Exception as e:
+                                    st.error(f"Erro ao cadastrar: {e}")
+                            else:
+                                st.warning("Preencha todos os campos.")
+
+                st.write("---")
+
+                # Lista de Gestão (Trazendo a função do Painel de Controle para cá)
+                st.subheader("👥 Professores Cadastrados")
+                try:
+                    query_prof = "SELECT id, username, nome, ativo, criado_em FROM usuarios_integrador ORDER BY criado_em DESC"
+                    df_prof = pd.read_sql(query_prof, conn)
+
+                    for index, row in df_prof.iterrows():
+                        c1, c2, c3, c4 = st.columns([1, 2, 1, 1])
+                        with c1:
+                            st.info(f"🔑 {row['username']}")
+                        with c2:
+                            st.write(f"**{row['nome']}**")
+                        with c3:
+                            status = "🟢 Ativo" if row['ativo'] else "🔴 Bloqueado"
+                            st.write(status)
+                        with c4:
+                            # Botão para ativar/desativar direto na lista
+                            label_btn = "Bloquear" if row['ativo'] else "Ativar"
+                            if st.button(label_btn, key=f"gestao_{row['id']}"):
+                                cursor = conn.cursor()
+                                cursor.execute("UPDATE usuarios_integrador SET ativo = %s WHERE id = %s",
+                                               (not row['ativo'], row['id']))
+                                conn.commit()
+                                st.rerun()
+                except Exception as e:
+                    st.error(f"Erro ao carregar lista: {e}")
 
             # -- ABA: VÍNCULOS (A Chave do SaaS) --
             with abas[3]:
