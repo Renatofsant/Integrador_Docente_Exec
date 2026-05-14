@@ -506,7 +506,7 @@ if realizar_login():
             # -- ABA: VÍNCULOS (A Chave do SaaS) --
             with abas[3]:
                 st.subheader("Atribuição de Turmas e Vínculos")
-                p_df = pd.read_sql("SELECT username, nome FROM usuarios_integrador WHERE perfil = 'professor'", conn)
+                p_df = pd.read_sql("SELECT username, nome FROM usuarios_integrador WHERE ativo = TRUE", conn)
                 e_df = pd.read_sql("SELECT id, nome FROM escolas ORDER BY nome", conn)
 
                 if not p_df.empty and not e_df.empty:
