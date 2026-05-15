@@ -171,6 +171,24 @@ st.markdown("""
         opacity: 1 !important;
         box-shadow: none !important;
     }
+
+    /* Botão de Login Ultra Vivo e Destacado */
+    [data-testid="stForm"] .stButton>button {
+        width: 100% !important;
+        border-radius: 12px !important;
+        height: 3.8em !important;
+        background: linear-gradient(135deg, #e11d48 0%, #f97316 100%) !important; /* Degradê de Alerta/Ação */
+        color: white !important;
+        font-weight: 800 !important;
+        font-size: 18px !important;
+        border: none !important;
+        box-shadow: 0 4px 15px rgba(225, 29, 72, 0.4) !important;
+    }
+
+    [data-testid="stForm"] .stButton>button:hover {
+        transform: scale(1.02) !important;
+        box-shadow: 0 8px 25px rgba(249, 115, 22, 0.6) !important;
+    }
     
     /* Cursor de Mãozinha (UX Dinâmica) */
     div[data-baseweb="select"], div[role="button"], .stDataEditor div[role="gridcell"] {
