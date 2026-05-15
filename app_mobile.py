@@ -398,7 +398,7 @@ if realizar_login():
                             st.download_button("📥 Baixar CSV", csv_data, f"SGI_{turma_nome}.csv", "text/csv")
                             
                         with exp2:
-                            # 1. Geramos a estrutura HTML robusta e completa para o navegador aceitar sem erro
+                            # 1. Geramos a estrutura HTML robusta e completa
                             html_cont = f"""<!DOCTYPE html>
                                     <html>
                                     <head>
@@ -421,13 +421,15 @@ if realizar_login():
                             # 2. Guardamos na memória de sessão de forma estável
                             st.session_state['html_relatorio'] = html_cont
                             
-                            # 3. O botão baixa usando uma KEY DINÂMICA para forçar o re-render correto no celular
+                            # 3. CHAVE BLINDADA: Usamos o username logado e a turma para garantir a unicidade
+                            user_chave = st.session_state.get('username', 'admin')
+                            
                             st.download_button(
                                 label="🖨️ Relatório HTML", 
                                 data=st.session_state['html_relatorio'], 
                                 file_name=f"Relatorio_{turma_nome}.html", 
                                 mime="text/html",
-                                key=f"btn_html_dyn_{id_escola}_{turma_nome}"  # Chave blindada por ID e nome da turma
+                                key=f"btn_html_dyn_{user_chave}_{turma_nome}"  # Chave 100% segura contra NameError
                             )
                     else:
                         st.info(f"💡 Você ainda não possui turmas vinculadas na escola **{escola_nome}**.")
