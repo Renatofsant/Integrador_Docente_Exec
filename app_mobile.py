@@ -396,20 +396,38 @@ if realizar_login():
                         with exp1:
                             csv_data = edited_df.to_csv(index=False).encode('utf-8')
                             st.download_button("📥 Baixar CSV", csv_data, f"SGI_{turma_nome}.csv", "text/csv")
-                        with exp2:
-                            # HTML para Impressão Rápida
-                            html_cont = f"<h2>{escola_nome}</h2><h3>Turma {turma_nome}</h3>"
                             
-                            # Salvamos no estado da sessão para não perder no recarregamento do clique
+                        with exp2:
+                            # 1. Geramos a estrutura HTML robusta e completa para o navegador aceitar sem erro
+                            html_cont = f"""<!DOCTYPE html>
+                                    <html>
+                                    <head>
+                                        <meta charset="utf-8">
+                                        <title>SGI - {escola_nome}</title>
+                                        <style>
+                                            body {{ font-family: Arial, sans-serif; margin: 30px; color: #1E293B; }}
+                                            h2 {{ color: #1E3A8A; border-bottom: 2px solid #3B82F6; padding-bottom: 8px; margin-bottom: 5px; }}
+                                            h3 {{ color: #64748B; margin-top: 5px; font-weight: 500; }}
+                                            p {{ color: #94A3B8; font-size: 12px; margin-top: 40px; border-top: 1px dashed #CBD5E1; padding-top: 10px; }}
+                                        </style>
+                                    </head>
+                                    <body>
+                                        <h2>🏫 {escola_nome}</h2>
+                                        <h3>👥 Turma: {turma_nome}</h3>
+                                        <p>Documento gerado digitalmente via Integrador Docente • Projetta.</p>
+                                    </body>
+                                    </html>"""
+                            
+                            # 2. Guardamos na memória de sessão de forma estável
                             st.session_state['html_relatorio'] = html_cont
                             
-                            # Passamos o dado direto do session_state
+                            # 3. O botão baixa usando uma KEY DINÂMICA para forçar o re-render correto no celular
                             st.download_button(
                                 label="🖨️ Relatório HTML", 
                                 data=st.session_state['html_relatorio'], 
-                                file_name="relatorio.html", 
+                                file_name=f"Relatorio_{turma_nome}.html", 
                                 mime="text/html",
-                                key="btn_download_html"  # Uma chave única evita bugs de duplicação
+                                key=f"btn_html_dyn_{id_escola}_{turma_nome}"  # Chave blindada por ID e nome da turma
                             )
                     else:
                         st.info(f"💡 Você ainda não possui turmas vinculadas na escola **{escola_nome}**.")
