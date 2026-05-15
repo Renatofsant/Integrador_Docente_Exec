@@ -407,7 +407,13 @@ if realizar_login():
                             st.download_button("📥 Baixar CSV", csv_data, f"SGI_{turma_nome}.csv", "text/csv")
                             
                         with exp2:
-                            # 1. Construímos as linhas da tabela pegando os dados direto do DataFrame
+                            # 1. Pegamos o nome do professor da sessão (ou define um padrão caso não encontre)
+                            professor_nome = st.session_state.get('nome_professor', 'Não identificado')
+                            if professor_nome == 'Não identificado' and 'user_data' in st.session_state:
+                                # Tentativa secundária baseada na estrutura do seu login
+                                professor_nome = st.session_state['user_data'].get('nome', 'Docente Integrador')
+
+                            # 2. Construímos as linhas da tabela pegando os dados direto do DataFrame
                             linhas_alunos = ""
                             if not edited_df.empty:
                                 for _, row in edited_df.iterrows():
@@ -423,9 +429,9 @@ if realizar_login():
                                     </tr>
                                     """
                             else:
-                                lines_alunos = "<tr><td colspan='7' class='center'>Nenhum aluno encontrado.</td></tr>"
+                                linhas_alunos = "<tr><td colspan='7' class='center'>Nenhum aluno encontrado.</td></tr>"
 
-                            # 2. Geramos a estrutura HTML robusta, injetando as linhas geradas
+                            # 3. Geramos a estrutura HTML incluindo a linha do Professor
                             html_cont = f"""<!DOCTYPE html>
                                     <html>
                                     <head>
@@ -434,7 +440,8 @@ if realizar_login():
                                         <style>
                                             body {{ font-family: Arial, sans-serif; margin: 30px; color: #1E293B; }}
                                             h2 {{ color: #1E3A8A; border-bottom: 2px solid #3B82F6; padding-bottom: 8px; margin-bottom: 5px; }}
-                                            h3 {{ color: #64748B; margin-top: 5px; font-weight: 500; margin-bottom: 25px; }}
+                                            h3 {{ color: #475569; margin-top: 5px; font-weight: 600; margin-bottom: 5px; }}
+                                            h4 {{ color: #64748B; margin-top: 5px; font-weight: 500; margin-bottom: 25px; }}
                                             table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
                                             th, td {{ border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-size: 14px; }}
                                             th {{ background-color: #F8FAFC; color: #334155; font-weight: bold; }}
@@ -445,7 +452,8 @@ if realizar_login():
                                     </head>
                                     <body>
                                         <h2>🏫 {escola_nome}</h2>
-                                        <h3>👥 Turma: {turma_nome} | Trimestre: {trimestre_selecionado}º</h3>
+                                        <h3>👤 Professor(a): {professor_nome}</h3>
+                                        <h4>👥 Turma: {turma_nome} | Trimestre: {trimestre_selecionado}º</h4>
                                         
                                         <table>
                                             <thead>
@@ -468,10 +476,10 @@ if realizar_login():
                                     </body>
                                     </html>"""
                             
-                            # 3. Guardamos na memória de sessão de forma estável
+                            # 4. Guardamos na memória de sessão de forma estável
                             st.session_state['html_relatorio'] = html_cont
                             
-                            # 4. CHAVE BLINDADA contra NameError
+                            # 5. CHAVE BLINDADA contra NameError
                             user_chave = st.session_state.get('username', 'admin')
                             
                             st.download_button(
