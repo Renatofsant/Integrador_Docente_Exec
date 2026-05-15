@@ -372,13 +372,22 @@ if realizar_login():
                                         VALUES (%s, %s, %s, %s, %s, %s, %s, %s, %s)
                                         ON CONFLICT (aluno_id, trimestre, professor_username) 
                                         DO UPDATE SET 
-                                            av1 = EXCLUDED.av1, av2 = EXCLUDED.av2, av3 = EXCLUDED.av3,
-                                            recuperacao = EXCLUDED.recuperacao, media_final = EXCLUDED.media_final, 
+                                            av1 = EXCLUDED.av1, 
+                                            av2 = EXCLUDED.av2, 
+                                            av3 = EXCLUDED.av3,
+                                            recuperacao = EXCLUDED.recuperacao, 
+                                            media_final = EXCLUDED.media_final, 
                                             faltas = EXCLUDED.faltas;
                                     """, (
-                                        int(row['id']), row['AV1'], row['AV2'], row['AV3'],
-                                        row['RECUP'], media_final, row['Faltas'],
-                                        trimestre_selecionado, st.session_state.username
+                                        int(row['id']), 
+                                        float(row['AV1']), 
+                                        float(row['AV2']), 
+                                        float(row['AV3']),
+                                        float(row['RECUP']), 
+                                        float(media_final), 
+                                        int(row['Faltas']),
+                                        int(trimestre_selecionado), 
+                                        str(st.session_state.username)
                                     ))
                                 conn.commit()
                                 st.success(f"✅ Sincronização da Turma {turma_nome} realizada com sucesso!")
