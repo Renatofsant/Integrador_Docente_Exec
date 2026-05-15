@@ -399,7 +399,18 @@ if realizar_login():
                         with exp2:
                             # HTML para Impressão Rápida
                             html_cont = f"<h2>{escola_nome}</h2><h3>Turma {turma_nome}</h3>"
-                            st.download_button("🖨️ Relatório HTML", html_cont, "relatorio.html", "text/html")
+                            
+                            # Salvamos no estado da sessão para não perder no recarregamento do clique
+                            st.session_state['html_relatorio'] = html_cont
+                            
+                            # Passamos o dado direto do session_state
+                            st.download_button(
+                                label="🖨️ Relatório HTML", 
+                                data=st.session_state['html_relatorio'], 
+                                file_name="relatorio.html", 
+                                mime="text/html",
+                                key="btn_download_html"  # Uma chave única evita bugs de duplicação
+                            )
                     else:
                         st.info(f"💡 Você ainda não possui turmas vinculadas na escola **{escola_nome}**.")
                 else:
