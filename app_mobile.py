@@ -407,15 +407,8 @@ if realizar_login():
                             st.download_button("📥 Baixar CSV", csv_data, f"SGI_{turma_nome}.csv", "text/csv")
                             
                         with exp2:
-                            # 1. Captura direta e segura do nome a partir da sessão de login do seu ecossistema
-                            professor_nome = "Docente Integrador"
-                            
-                            if 'usuario' in st.session_state and isinstance(st.session_state['usuario'], dict):
-                                professor_nome = st.session_state['usuario'].get('nome', 'Docente Integrador')
-                            elif 'user_data' in st.session_state and isinstance(st.session_state['user_data'], dict):
-                                professor_nome = st.session_state['user_data'].get('nome', 'Docente Integrador')
-                            elif 'nome' in st.session_state:
-                                professor_nome = st.session_state['nome']
+                            # 1. CAPTURA DIRETA: Usando a variável exata que você definiu no login (user_nome)
+                            professor_nome = st.session_state.get('user_nome', 'Docente Integrador')
 
                             # 2. Construímos as linhas da tabela pegando os dados direto do DataFrame
                             linhas_alunos = ""
@@ -480,7 +473,7 @@ if realizar_login():
                                     </body>
                                     </html>"""
                             
-                            # 4. Salva o relatório e gera o botão de download com chave dinâmica estável
+                            # 4. Salva o relatório e gera o botão de download
                             st.session_state['html_relatorio'] = html_cont
                             user_chave = st.session_state.get('username', 'admin')
                             
