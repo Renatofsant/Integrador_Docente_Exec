@@ -415,7 +415,7 @@ if realizar_login():
         elif escolha == "⚙️ Gestão Administrativa":
             st.markdown("<h1 class='main-title'>⚙️ Gestão Administrativa</h1>", unsafe_allow_html=True)
 
-            abas = st.tabs(["🏫 Escolas", "👥 Alunos", "👤 Professores", "🔗 Vínculos", "🚀 Carga SEEDUC"])
+            abas = st.tabs(["🏫 Escolas", "👥 Alunos", "👤 Professores", "🔗 Vínculos", "💰 Financeiro", "🚀 Carga SEEDUC"])
 
             # -- ABA: ESCOLAS --
             with abas[0]:
@@ -537,17 +537,96 @@ if realizar_login():
                     else:
                         st.info("Não há turmas cadastradas para esta escola.")
 
-            # -- ABA: CARGA DE DADOS (ROBÔ) --
+            # -- ABA 4: FINANCEIRO (CONTROLE DE PIX E ASSINATURAS) --
             with abas[4]:
+                st.subheader("💰 Gestão de Assinaturas e Recebimentos")
+                
+                # Importação local para garantir que as datas funcionem
+                from datetime import datetime, timedelta
+
+                # --- MÉTRICAS RÁPIDAS ---
+                try:
+                    query_fin = "SELECT status_pagamento, valor_total, qtd_turmas FROM assinaturas"
+                    df_fin = pd.read_sql(query_fin, conn)
+                    
+                    if not df_fin.empty:
+                        c_m1, c_m2, c_m3 = st.columns(3)
+                        recebido = df_fin[df_fin['status_pagamento'] == 'pago']['valor_total'].sum()
+                        pendente = df_fin[df_fin['status_pagamento'] == 'pendente']['valor_total'].sum()
+                        c_m1.metric("Confirmado ✅", f"R$ {recebido:,.2f}")
+                        c_m2.metric("Pendente ⏳", f"R$ {pendente:,.2f}")
+                        c_m3.metric("Total Turmas", int(df_fin['qtd_turmas'].sum()))
+                except:
+                    st.warning("Tabela 'assinaturas' não encontrada. Verifique se executou o SQL no Supabase.")
+                
+                st.write("---")
+                
+                # --- CADASTRO DE NOVA COBRANÇA ---
+                with st.expander("➕ Registrar Nova Venda/Cobrança", expanded=False):
+                    with st.form("form_nova_venda"):
+                        profs_venda = pd.read_sql("SELECT username, nome FROM usuarios_integrador WHERE ativo = TRUE", conn)
+                        if not profs_venda.empty:
+                            sel_user = st.selectbox("Professor", profs_venda['username'], 
+                                                  format_func=lambda x: profs_venda.loc[profs_venda['username']==x, 'nome'].values[0])
+                            n_turmas = st.number_input("Quantidade de Turmas", min_value=1, step=1, value=1)
+                            
+                            if st.form_submit_button("Gerar Cobrança"):
+                                cursor = conn.cursor()
+                                nome_prof_venda = profs_venda.loc[profs_venda['username']==sel_user, 'nome'].values[0]
+                                valor_venda = n_turmas * 10.0
+                                cursor.execute("""
+                                    INSERT INTO assinaturas (username_docente, nome_professor, qtd_turmas, valor_total)
+                                    VALUES (%s, %s, %s, %s)
+                                """, (sel_user, nome_prof_venda, n_turmas, valor_venda))
+                                conn.commit()
+                                st.success(f"Cobrança gerada para {nome_prof_venda}!")
+                                st.rerun()
+                        else:
+                            st.error("Nenhum professor ativo encontrado para cobrança.")
+
+                # --- LISTA DE BAIXA DE PAGAMENTOS ---
+                st.write("### 🚀 Pendências de Pagamento")
+                try:
+                    query_pendentes = "SELECT * FROM assinaturas WHERE status_pagamento = 'pendente' ORDER BY data_cadastro DESC"
+                    df_p = pd.read_sql(query_pendentes, conn)
+                    
+                    if df_p.empty:
+                        st.info("Tudo em dia! Nenhum Pix pendente.")
+                    else:
+                        for _, row in df_p.iterrows():
+                            with st.container():
+                                col_a, col_b, col_c = st.columns([3, 1, 1])
+                                col_a.write(f"**{row['nome_professor']}** ({row['qtd_turmas']} turmas)")
+                                col_b.write(f"R$ {row['valor_total']:.2f}")
+                                if col_c.button("Confirmar ✅", key=f"pay_{row['id']}"):
+                                    cursor = conn.cursor()
+                                    venc = (datetime.now() + timedelta(days=90)).date()
+                                    cursor.execute("""
+                                        UPDATE assinaturas SET 
+                                        status_pagamento = 'pago', 
+                                        data_pagamento = %s, 
+                                        data_vencimento = %s 
+                                    WHERE id = %s
+                                    """, (datetime.now(), venc, row['id']))
+                                    conn.commit()
+                                    st.success("Pago!")
+                                    st.rerun()
+                                st.write("---")
+                except:
+                    pass
+
+            # -- ABA 5: CARGA DE DADOS (ROBÔ SEEDUC) --
+            with abas[5]:
                 st.subheader("🚀 Integração Robótica SEEDUC")
-                st.info("Este módulo dispara a extração automática de alunos e turmas diretamente do portal oficial.")
+                st.info("Este módulo dispara a extração automática diretamente do portal oficial.")
                 with st.form("form_robo"):
                     l_see = st.text_input("Login/CPF SEEDUC")
                     p_see = st.text_input("Senha Portal", type="password")
+                    # Aqui você usa o e_df que já foi carregado na aba de Vínculos
                     e_alv = st.selectbox("Escola Alvo para Carga", e_df['nome'])
                     if st.form_submit_button("🚀 INICIAR EXTRAÇÃO TANQUE DE GUERRA"):
-                        st.warning(f"Comando enviado. O robô irá processar a unidade: {e_alv}")
-                        # Lógica de disparo do script Selenium aqui [cite: 410]
+                        st.warning(f"Comando enviado para a unidade: {e_alv}")
+                        # Seu código Selenium entra aqui
 
 # ==============================================================================
 # FIM DO CÓDIGO - SGI INTEGRADOR DOCENTE V2.0
