@@ -407,11 +407,24 @@ if realizar_login():
                             st.download_button("📥 Baixar CSV", csv_data, f"SGI_{turma_nome}.csv", "text/csv")
                             
                         with exp2:
-                            # 1. Pegamos o nome do professor da sessão (ou define um padrão caso não encontre)
-                            professor_nome = st.session_state.get('nome_professor', 'Não identificado')
-                            if professor_nome == 'Não identificado' and 'user_data' in st.session_state:
-                                # Tentativa secundária baseada na estrutura do seu login
-                                professor_nome = st.session_state['user_data'].get('nome', 'Docente Integrador')
+                            # 1. Busca robusta do nome do professor direto no banco de dados pelo username logado
+                            professor_nome = "Docente Integrador"
+                            user_logado = st.session_state.get('username')
+
+                            if user_logado:
+                                try:
+                                    with get_connection() as conn_prof:
+                                        with conn_prof.cursor() as cur_prof:
+                                            cur_prof.execute(
+                                                "SELECT nome FROM usuarios_integrador WHERE LOWER(username) = %s",
+                                                (user_logado.lower().strip(),)
+                                            )
+                                            res_prof = cur_prof.fetchone()
+                                            if res_prof and res_prof[0]:
+                                                professor_nome = res_prof[0]
+                                except Exception as e:
+                                    # Caso ocorra qualquer oscilação no banco, mantém o fallback seguro
+                                    professor_nome = st.session_state.get('nome', "Docente Integrador")
 
                             # 2. Construímos as linhas da tabela pegando os dados direto do DataFrame
                             linhas_alunos = ""
@@ -431,7 +444,7 @@ if realizar_login():
                             else:
                                 linhas_alunos = "<tr><td colspan='7' class='center'>Nenhum aluno encontrado.</td></tr>"
 
-                            # 3. Geramos a estrutura HTML incluindo a linha do Professor
+                            # 3. Geramos a estrutura HTML incluindo o nome retornado do banco
                             html_cont = f"""<!DOCTYPE html>
                                     <html>
                                     <head>
