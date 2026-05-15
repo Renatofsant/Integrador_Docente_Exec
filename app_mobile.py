@@ -407,24 +407,27 @@ if realizar_login():
                             st.download_button("📥 Baixar CSV", csv_data, f"SGI_{turma_nome}.csv", "text/csv")
                             
                         with exp2:
-                            # 1. Busca robusta do nome do professor direto no banco de dados pelo username logado
+                            # 1. Busca robusta do nome do professor corrigindo para a coluna correta (nome_professor)
                             professor_nome = "Docente Integrador"
-                            user_logado = st.session_state.get('username')
+                            
+                            # Tenta capturar o usuário logado de todas as formas guardadas na sessão
+                            user_logado = st.session_state.get('username') or st.session_state.get('usuario_logado')
 
                             if user_logado:
                                 try:
                                     with get_connection() as conn_prof:
                                         with conn_prof.cursor() as cur_prof:
+                                            # CORREÇÃO: Selecionando a coluna real 'nome_professor'
                                             cur_prof.execute(
-                                                "SELECT nome FROM usuarios_integrador WHERE LOWER(username) = %s",
-                                                (user_logado.lower().strip(),)
+                                                "SELECT nome_professor FROM usuarios_integrador WHERE LOWER(username) = %s",
+                                                (str(user_logado).lower().strip(),)
                                             )
                                             res_prof = cur_prof.fetchone()
                                             if res_prof and res_prof[0]:
                                                 professor_nome = res_prof[0]
                                 except Exception as e:
-                                    # Caso ocorra qualquer oscilação no banco, mantém o fallback seguro
-                                    professor_nome = st.session_state.get('nome', "Docente Integrador")
+                                    # Fallback caso o banco falhe
+                                    professor_nome = "Docente Integrador"
 
                             # 2. Construímos as linhas da tabela pegando os dados direto do DataFrame
                             linhas_alunos = ""
@@ -444,7 +447,7 @@ if realizar_login():
                             else:
                                 linhas_alunos = "<tr><td colspan='7' class='center'>Nenhum aluno encontrado.</td></tr>"
 
-                            # 3. Geramos a estrutura HTML incluindo o nome retornado do banco
+                            # 3. Geramos a estrutura HTML com os dados corrigidos
                             html_cont = f"""<!DOCTYPE html>
                                     <html>
                                     <head>
@@ -489,10 +492,8 @@ if realizar_login():
                                     </body>
                                     </html>"""
                             
-                            # 4. Guardamos na memória de sessão de forma estável
+                            # 4. Salva na sessão e gera o botão de download
                             st.session_state['html_relatorio'] = html_cont
-                            
-                            # 5. CHAVE BLINDADA contra NameError
                             user_chave = st.session_state.get('username', 'admin')
                             
                             st.download_button(
