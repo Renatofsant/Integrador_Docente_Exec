@@ -125,22 +125,36 @@ st.markdown("""
         font-weight: 500;
     }
 
-    /* Botão de Ação Principal */
+    /* Botão de Ação Principal (Estado Padrão) */
     .stButton>button {
         width: 100%;
         border-radius: 12px;
         height: 3.8em;
-        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important;
         color: white !important;
         font-weight: 800;
         font-size: 18px;
-        border: none;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        border: none !important;
+        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        opacity: 1 !important; /* Força opacidade total */
     }
 
+    /* Ajuste Fino do Hover (Tanque de Guerra - Sem Transparência) */
     .stButton>button:hover {
+        background: linear-gradient(135deg, #1d4ed8 0%, #60a5fa 100%) !important; /* Degradê levemente mais claro */
+        color: white !important;
         transform: scale(1.02);
-        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.5);
+        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.6) !important;
+        opacity: 1 !important; /* Impede o Streamlit de deixar transparente */
+        border: none !important;
+    }
+    
+    /* Garante que o estado de foco/clique também não fique transparente */
+    .stButton>button:active, .stButton>button:focus {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important;
+        opacity: 1 !important;
+        border: none !important;
+        color: white !important;
     }
 
     /* Cursor de Mãozinha (UX Dinâmica) */
