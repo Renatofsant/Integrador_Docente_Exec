@@ -407,7 +407,25 @@ if realizar_login():
                             st.download_button("📥 Baixar CSV", csv_data, f"SGI_{turma_nome}.csv", "text/csv")
                             
                         with exp2:
-                            # 1. Geramos a estrutura HTML robusta e completa
+                            # 1. Construímos as linhas da tabela pegando os dados direto do DataFrame
+                            linhas_alunos = ""
+                            if not edited_df.empty:
+                                for _, row in edited_df.iterrows():
+                                    linhas_alunos += f"""
+                                    <tr>
+                                        <td>{row['Aluno']}</td>
+                                        <td class="center">{row['AV1']:.1f}</td>
+                                        <td class="center">{row['AV2']:.1f}</td>
+                                        <td class="center">{row['AV3']:.1f}</td>
+                                        <td class="center">{row['RECUP']:.1f}</td>
+                                        <td class="center font-bold">{row['Somatório']:.1f}</td>
+                                        <td class="center">{int(row['Faltas'])}</td>
+                                    </tr>
+                                    """
+                            else:
+                                lines_alunos = "<tr><td colspan='7' class='center'>Nenhum aluno encontrado.</td></tr>"
+
+                            # 2. Geramos a estrutura HTML robusta, injetando as linhas geradas
                             html_cont = f"""<!DOCTYPE html>
                                     <html>
                                     <head>
@@ -416,21 +434,44 @@ if realizar_login():
                                         <style>
                                             body {{ font-family: Arial, sans-serif; margin: 30px; color: #1E293B; }}
                                             h2 {{ color: #1E3A8A; border-bottom: 2px solid #3B82F6; padding-bottom: 8px; margin-bottom: 5px; }}
-                                            h3 {{ color: #64748B; margin-top: 5px; font-weight: 500; }}
+                                            h3 {{ color: #64748B; margin-top: 5px; font-weight: 500; margin-bottom: 25px; }}
+                                            table {{ width: 100%; border-collapse: collapse; margin-top: 10px; }}
+                                            th, td {{ border: 1px solid #CBD5E1; padding: 10px; text-align: left; font-size: 14px; }}
+                                            th {{ background-color: #F8FAFC; color: #334155; font-weight: bold; }}
+                                            .center {{ text-align: center; }}
+                                            .font-bold {{ font-weight: bold; }}
                                             p {{ color: #94A3B8; font-size: 12px; margin-top: 40px; border-top: 1px dashed #CBD5E1; padding-top: 10px; }}
                                         </style>
                                     </head>
                                     <body>
                                         <h2>🏫 {escola_nome}</h2>
-                                        <h3>👥 Turma: {turma_nome}</h3>
+                                        <h3>👥 Turma: {turma_nome} | Trimestre: {trimestre_selecionado}º</h3>
+                                        
+                                        <table>
+                                            <thead>
+                                                <tr>
+                                                    <th>Nome do Aluno</th>
+                                                    <th class="center">AV1</th>
+                                                    <th class="center">AV2</th>
+                                                    <th class="center">AV3</th>
+                                                    <th class="center">REC</th>
+                                                    <th class="center">Total</th>
+                                                    <th class="center">Faltas</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {linhas_alunos}
+                                            </tbody>
+                                        </table>
+                                    
                                         <p>Documento gerado digitalmente via Integrador Docente • Projetta.</p>
                                     </body>
                                     </html>"""
                             
-                            # 2. Guardamos na memória de sessão de forma estável
+                            # 3. Guardamos na memória de sessão de forma estável
                             st.session_state['html_relatorio'] = html_cont
                             
-                            # 3. CHAVE BLINDADA: Usamos o username logado e a turma para garantir a unicidade
+                            # 4. CHAVE BLINDADA contra NameError
                             user_chave = st.session_state.get('username', 'admin')
                             
                             st.download_button(
@@ -438,7 +479,7 @@ if realizar_login():
                                 data=st.session_state['html_relatorio'], 
                                 file_name=f"Relatorio_{turma_nome}.html", 
                                 mime="text/html",
-                                key=f"btn_html_dyn_{user_chave}_{turma_nome}"  # Chave 100% segura contra NameError
+                                key=f"btn_html_dyn_{user_chave}_{turma_nome}"
                             )
                     else:
                         st.info(f"💡 Você ainda não possui turmas vinculadas na escola **{escola_nome}**.")
