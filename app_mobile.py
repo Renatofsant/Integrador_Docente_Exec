@@ -125,38 +125,52 @@ st.markdown("""
         font-weight: 500;
     }
 
-    /* Botão de Ação Principal (Estado Padrão) */
-    .stButton>button {
-        width: 100%;
-        border-radius: 12px;
-        height: 3.8em;
-        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important;
-        color: white !important;
-        font-weight: 800;
-        font-size: 18px;
-        border: none !important;
-        transition: all 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        opacity: 1 !important; /* Força opacidade total */
+    /* ==============================================================================
+    BOTÃO ULTRA VIVO - ANTI-TRANSPARÊNCIA (PADRÃO TANQUE DE GUERRA)
+    ============================================================================== */
+    
+    /* Estado Normal: Força o seletor pelo cache do Streamlit */
+    div[data-testid="stButton"] button, 
+    .stButton>button, 
+    div[class*="st-emotion-cache"] button {
+        width: 100% !important;
+        border-radius: 12px !important;
+        height: 3.8em !important;
+        background: linear-gradient(135deg, #1e3a8a 0%, #2563eb 100%) !important; /* Azul Royal Sólido */
+        color: #FFFFFF !important;
+        font-weight: 800 !important;
+        font-size: 18px !important;
+        border: 2px solid #3b82f6 !important;
+        transition: all 0.25s ease-in-out !important;
+        opacity: 1 !important;
+        filter: opacity(1) !important;
     }
 
-    /* Ajuste Fino do Hover (Tanque de Guerra - Sem Transparência) */
-    .stButton>button:hover {
-        background: linear-gradient(135deg, #1d4ed8 0%, #60a5fa 100%) !important; /* Degradê levemente mais claro */
-        color: white !important;
-        transform: scale(1.02);
-        box-shadow: 0 10px 25px rgba(59, 130, 246, 0.6) !important;
-        opacity: 1 !important; /* Impede o Streamlit de deixar transparente */
-        border: none !important;
+    /* Estado Hover: Intercepta o efeito antes que o Streamlit force o fading */
+    div[data-testid="stButton"] button:hover, 
+    .stButton>button:hover, 
+    div[class*="st-emotion-cache"] button:hover {
+        background: #3b82f6 !important; /* Cor sólida ultra viva no hover (Mata a transparência do degradê) */
+        color: #FFFFFF !important;
+        border-color: #60a5fa !important;
+        transform: translateY(-2px) scale(1.01);
+        box-shadow: 0 0 20px rgba(59, 130, 246, 0.8) !important; /* Efeito Brilho Neon */
+        opacity: 1 !important;
+        filter: opacity(1) !important; /* Anula o filtro de opacidade do navegador */
+    }
+
+    /* Garante que ele continue 100% visível enquanto estiver sendo clicado */
+    div[data-testid="stButton"] button:active, 
+    div[data-testid="stButton"] button:focus,
+    .stButton>button:active,
+    .stButton>button:focus {
+        background: #1d4ed8 !important;
+        color: #FFFFFF !important;
+        opacity: 1 !important;
+        filter: opacity(1) !important;
+        box-shadow: none !important;
     }
     
-    /* Garante que o estado de foco/clique também não fique transparente */
-    .stButton>button:active, .stButton>button:focus {
-        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important;
-        opacity: 1 !important;
-        border: none !important;
-        color: white !important;
-    }
-
     /* Cursor de Mãozinha (UX Dinâmica) */
     div[data-baseweb="select"], div[role="button"], .stDataEditor div[role="gridcell"] {
         cursor: pointer !important;
