@@ -150,6 +150,30 @@ st.markdown("""
         background: linear-gradient(135deg, #1d4ed8 0%, #60a5fa 100%) !important; /* Mantém vivo e sem sumir */
         opacity: 1 !important;
     }
+
+    /* ==============================================================================
+    AJUSTE ESPECÍFICO PARA O ÍCONE DO OLHO (SENHA)
+    ============================================================================== */
+    
+    /* Alvo: O botão interno que contém o ícone do olho */
+    [data-testid="stForm"] input[type="password"] ~ button {
+        height: auto !important; /* Remove a altura forçada do input pai */
+        width: auto !important;  /* Remove a largura forçada */
+        padding: 0 10px !important; /* Ajusta o padding interno para centralizar */
+        background: transparent !important; /* Garante fundo transparente */
+        border: none !important; /* Remove bordas acidentais */
+        top: 50% !important;     /* Centraliza verticalmente */
+        transform: translateY(-50%) !important; /* Ajuste fino da centralização */
+        color: #94a3b8 !important; /* Define uma cor suave para o ícone */
+        right: 5px !important;   /* Posiciona corretamente à direita */
+    }
+
+    /* Alvo: O ícone SVG propriamente dito */
+    [data-testid="stForm"] input[type="password"] ~ button svg {
+        width: 18px !important;  /* Define um tamanho fixo e pequeno para o ícone */
+        height: 18px !important; /* Define um tamanho fixo e pequeno para o ícone */
+    }
+
     
     /* Cursor de Mãozinha (UX Dinâmica) */
     div[data-baseweb="select"], div[role="button"], .stDataEditor div[role="gridcell"] {
