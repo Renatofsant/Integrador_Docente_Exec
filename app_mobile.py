@@ -351,7 +351,7 @@ if realizar_login():
 
                     # FILTRO DE TURMAS BLINDADO: Não trava se a escola for nova
                     if st.session_state.user_perfil == 'admin':
-                        query_turmas = f"SELECT DISTINCT turma FROM alunos WHERE school_id = {id_escola} AND turma IS NOT NULL ORDER BY turma"
+                        query_turmas = f"SELECT DISTINCT turma FROM alunos WHERE escola_id = {id_escola} AND turma IS NOT NULL ORDER BY turma"
                     else:
                         query_turmas = f"""
                             SELECT DISTINCT turma FROM vinculo_professor_turma 
