@@ -125,10 +125,29 @@ st.markdown("""
         font-weight: 500;
     }
 
-    /* Botão de Ação Principal (Formulário e Comum Unificados) */
-    .stButton>button, 
-    [data-testid="stForm"] button,
-    div[data-testid="stForm"] .stButton>button {
+    /* ==============================================================================
+    1. INPUTS CUSTOMIZADOS (SEM QUEBRAR O OLHO)
+    ============================================================================== */
+    [data-testid="stForm"] input {
+        color: #0F172A !important;
+        background-color: #f8fafc !important;
+        border: 2px solid #94a3b8 !important;
+        border-radius: 12px !important;
+        padding: 12px !important;
+    }
+
+    /* Ajuste cirúrgico: força o desenho do olho a ficar em tamanho normal */
+    [data-testid="stForm"] input[type="password"] ~ button svg {
+        width: 18px !important;
+        height: 18px !important;
+    }
+
+    /* ==============================================================================
+    2. BOTÃO DE LOGIN EXCLUSIVO (CIRÚRGICO - NÃO MEXE NO OLHO)
+    ============================================================================== */
+    
+    /* Estado Normal: Aplica o degradê APENAS no botão de submit do formulário */
+    div.stFormSubmitButton button {
         width: 100% !important;
         border-radius: 12px !important;
         height: 3.8em !important;
@@ -139,71 +158,25 @@ st.markdown("""
         border: none !important;
         transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
         opacity: 1 !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
-    /* Efeito Hover Casado e Idêntico para Ambos */
-    .stButton>button:hover, 
-    [data-testid="stForm"] button:hover,
-    div[data-testid="stForm"] .stButton>button:hover {
+    /* Estado Hover do Botão de Login */
+    div.stFormSubmitButton button:hover {
         transform: scale(1.02) !important;
         box-shadow: 0 8px 20px rgba(59, 130, 246, 0.5) !important;
-        background: linear-gradient(135deg, #1d4ed8 0%, #60a5fa 100%) !important; /* Mantém vivo e sem sumir */
+        background: linear-gradient(135deg, #1d4ed8 0%, #60a5fa 100%) !important;
         opacity: 1 !important;
     }
 
-    /* ==============================================================================
-    BLINDAGEM TOTAL ANTI-DEFORMAÇÃO DO OLHO (MATA AZUL E ESTICAMENTO)
-    ============================================================================== */
-    
-    /* Pega diretamente o botão interno pela propriedade de controle do Streamlit */
-    div[data-testid="stForm"] input[type="password"] ~ button,
-    div[data-testid="stForm"] button[aria-label*="password" i],
-    div[data-testid="stForm"] button[class*="st-emotion-cache"] {
-        position: absolute !important;
-        top: 50% !important;
-        transform: translateY(-50%) !important;
-        right: 8px !important;
-        height: 28px !important; /* Altura fixa menor que o input */
-        width: 32px !important;  /* Largura fixa discreta */
-        min-width: 32px !important;
-        max-width: 32px !important;
-        background: transparent !important;
-        background-color: transparent !important;
-        border: none !important;
+    /* Estado de Clique do Botão de Login */
+    div.stFormSubmitButton button:active,
+    div.stFormSubmitButton button:focus {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important;
+        opacity: 1 !important;
         box-shadow: none !important;
-        padding: 0 !important;
-        margin: 0 !important;
-        display: inline-flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-        flex-grow: 0 !important; /* Proíbe o botão de esticar para o lado */
-    }
-
-    /* Trava o estado de foco, clique e hover para não herdar o degradê azul em hipótese alguma */
-    div[data-testid="stForm"] input[type="password"] ~ button:focus,
-    div[data-testid="stForm"] input[type="password"] ~ button:active,
-    div[data-testid="stForm"] input[type="password"] ~ button:hover,
-    div[data-testid="stForm"] button[aria-label*="password" i]:focus,
-    div[data-testid="stForm"] button[aria-label*="password" i]:active {
-        background: transparent !important;
-        background-color: transparent !important;
-        box-shadow: none !important;
-        outline: none !important;
-        border: none !important;
-        width: 32px !important;
-    }
-
-    /* Reduz e fixa o desenho do olho (SVG) exatamente no centro do botão */
-    div[data-testid="stForm"] input[type="password"] ~ button svg,
-    div[data-testid="stForm"] button[aria-label*="password" i] svg {
-        width: 18px !important;
-        height: 18px !important;
-        max-width: 18px !important;
-        max-height: 18px !important;
-        fill: #475569 !important; /* Cinza escuro discreto */
-        color: #475569 !important;
-        margin: 0 !important;
-        padding: 0 !important;
     }
 
     /* ==============================================================================
