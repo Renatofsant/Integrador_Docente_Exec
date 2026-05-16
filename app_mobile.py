@@ -125,6 +125,7 @@ st.markdown("""
         font-weight: 500;
     }
 
+
     /* ==============================================================================
     1. INPUTS CUSTOMIZADOS (SEM QUEBRAR O OLHO)
     ============================================================================== */
@@ -158,9 +159,6 @@ st.markdown("""
         border: none !important;
         transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
         opacity: 1 !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
     }
 
     /* Estado Hover do Botão de Login */
@@ -171,13 +169,47 @@ st.markdown("""
         opacity: 1 !important;
     }
 
-    /* Estado de Clique do Botão de Login */
-    div.stFormSubmitButton button:active,
-    div.stFormSubmitButton button:focus {
+    /* ==============================================================================
+    3. TODOS OS OUTROS BOTÕES DO PAINEL (SALVAR, CSV, HTML, SAIR)
+    ============================================================================== */
+    
+    /* Estado Normal: Pega o botão clássico e o de download na área logada */
+    div[data-testid="stNotification"] ~ div button,
+    .stButton > button:not([id*="login"]),
+    .stDownloadButton > button {
+        width: 100% !important;
+        border-radius: 12px !important;
+        height: 3.8em !important;
         background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important;
+        color: white !important;
+        font-weight: 800 !important;
+        border: none !important;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
         opacity: 1 !important;
-        box-shadow: none !important;
+        display: inline-flex !important;
+        align-items: center !important;
+        justify-content: center !important;
+        text-decoration: none !important;
     }
+
+    /* Hover de todos os botões internos */
+    div[data-testid="stNotification"] ~ div button:hover,
+    .stButton > button:not([id*="login"]):hover,
+    .stDownloadButton > button:hover {
+        transform: scale(1.02) !important;
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.5) !important;
+        background: linear-gradient(135deg, #1d4ed8 0%, #60a5fa 100%) !important;
+        opacity: 1 !important;
+    }
+
+    /* Clique de todos os botões internos */
+    .stButton > button:active, .stDownloadButton > button:active,
+    .stButton > button:focus, .stDownloadButton > button:focus {
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important;
+        color: white !important;
+        opacity: 1 !important;
+    }
+    
 
     /* ==============================================================================
                                     Maõzinha dinâmica
