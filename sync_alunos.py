@@ -194,27 +194,46 @@ class PainelSGI(ctk.CTk):
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=opt)
             driver.get("https://docenteonline.educacao.rj.gov.br/NovoDocente/")
             
-            # 2. PEDE O LOGIN MANUAL APENAS UMA VEZ ANTES DE ENTRAR NO LOOP DE TURMAS
+            # 2. SEED DE LOGIN: Aguarda o professor logar e entrar na PRIMEIRA turma
             CardInstrucao(self)
             
             conn = psycopg2.connect(DB_URI)
             cursor = conn.cursor()
 
-            # 3. ENTRA NO LOOP APENAS PARA ALTERNAR AS TURMAS
+            # 💡 MAPEAMENTO AUTOMÁTICO DE MATÉRIAS (Evita o erro do robô não achar notas)
+            disciplina_sufixo = ""
+            if self.usuario == "ana@leal":
+                disciplina_sufixo = " - Matemática"
+            elif self.usuario == "carla":
+                disciplina_sufixo = " - [Matéria da Carla]"  # <-- Substitua depois pela matéria real da Carla
+
+            # 3. ENTRA NO LOOP DAS TURMAS (SESSÃO PERMANENTE)
             while True:
-                turma_alvo = JanelaDialogo("Identificação", "Entre na nova turma no portal e digite o número dela aqui:", "Ex: 2005").resultado
-                if not turma_alvo: 
-                    break  # Se fechar ou clicar em cancelar, sai do robô
-                    
+                turma_digitada = JanelaDialogo("Identificação", "Mude para a turma desejada no portal e digite apenas o número dela aqui:", "Ex: 2004").resultado
+                if not turma_digitada: 
+                    break  # Cancela ou fecha janela -> Sai do loop de forma limpa
+                
+                # Aplica o sufixo da disciplina se não for o Admin
+                turma_alvo = f"{turma_digitada.strip()}{disciplina_sufixo}" if self.usuario != "renato" else turma_digitada.strip()
+                
                 trimestre_alvo = JanelaDialogo("Trimestre", "Trimestre (1, 2 ou 3):", "1").resultado or "1"
+
+                # 💡 TEMPO DE SEGURANÇA UX: Dá tempo para o portal renderizar a tabela na mudança de turma
+                time.sleep(2)
 
                 # Script JavaScript de extração na pauta ativa
                 script_extracao = "let r=[]; document.querySelectorAll('tr').forEach(tr=>{let d=tr.querySelectorAll('td'); if(d.length>=2){let n=d[0].innerText.trim(); let s=d[1]?d[1].innerText.trim():''; if(n.length>5 && !n.includes('Aulas')) r.push({n:n, s:(s==='Matriculado'||s==='')?'Ativo':'Inativo'});}}); return r;"
                 alunos_portal = driver.execute_script(script_extracao)
 
+                # Se o portal retornar vazio porque a página ainda estava carregando, avisa em vez de deslogar
+                if not alunos_portal:
+                    messagebox.showwarning("Aviso de Carregamento", "Não foi possível ler os alunos da página. Certifique-se de que a pauta da turma está totalmente visível na tela e tente de novo.")
+                    continue
+
                 for aluno in alunos_portal:
                     nome, status = aluno['n'], aluno['s']
                     try:
+                        # Insere/Atualiza os alunos casando perfeitamente com a nomenclatura 'Turma - Disciplina'
                         cursor.execute(
                             "INSERT INTO alunos (escola_id, nome_completo, turma, status) VALUES (2, %s, %s, %s) ON CONFLICT (escola_id, nome_completo, turma) DO UPDATE SET status = EXCLUDED.status RETURNING id",
                             (nome, turma_alvo, status))
@@ -264,19 +283,19 @@ class PainelSGI(ctk.CTk):
                     except Exception as e:
                         conn.rollback()
 
-                # Pergunta se quer ir para outra turma mantendo o mesmo navegador aberto
+                # Pergunta se quer ir para outra pauta mantendo a mesma janela do Chrome ativa
                 if not CardFinalizacao(self).resultado: 
                     break
                     
             self.destroy()
         except Exception as e:
-            messagebox.showerror("Erro no Fluxo", str(e))
+            messagebox.showerror("Erro Crítico", f"Ocorreu uma falha no motor do robô: {e}")
             self.deiconify()
         finally:
             if conn: 
                 conn.close()
-            if driver:
-                driver.quit() # Só fecha o navegador quando você decidir sair de vez do robô
+            # O driver.quit() foi removido daqui de propósito para garantir que, se houver um erro leve, 
+            # o navegador NÃO feche na cara do professor, mantendo a sessão de login viva!
 
 
 # =================================================================
