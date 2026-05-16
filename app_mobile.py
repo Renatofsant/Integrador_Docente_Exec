@@ -663,35 +663,68 @@ if realizar_login():
             # -- ABA: VÍNCULOS (A Chave do SaaS) --
             with abas[3]:
                 st.subheader("Atribuição de Turmas e Vínculos")
-                p_df = pd.read_sql("SELECT username, nome FROM usuarios_integrador WHERE ativo = TRUE", conn)
+                p_df = pd.read_sql("SELECT id, username, nome FROM usuarios_integrador WHERE ativo = TRUE", conn)
                 e_df = pd.read_sql("SELECT id, nome FROM escolas ORDER BY nome", conn)
 
                 if not p_df.empty and not e_df.empty:
+                    # Seleção de Professor e captura dinâmica de ID e Username
                     sel_p = st.selectbox("Escolha o Professor", p_df['username'],
                                          format_func=lambda x: p_df.loc[p_df['username'] == x, 'nome'].values[0])
+                    id_professor_selecionado = p_df.loc[p_df['username'] == sel_p, 'id'].values[0]
+                    
                     sel_e_n = st.selectbox("Unidade Escolar", e_df['nome'])
                     sel_e_id = e_df.loc[e_df['nome'] == sel_e_n, 'id'].values[0]
 
                     vinc_id = st.text_input("Vínculo SEEDUC (Matrícula ex: 1, 2, 3)")
 
+                    # Busca turmas existentes para a listagem multiselect
                     t_disp = pd.read_sql(
                         f"SELECT DISTINCT turma FROM alunos WHERE escola_id = {sel_e_id} ORDER BY turma", conn)
-                    if not t_disp.empty:
-                        ts = st.multiselect("Selecione as Turmas deste Docente", t_disp['turma'])
-                        if st.button("💾 Confirmar Vínculos"):
-                            if vinc_id:
+                    
+                    # Se a escola for nova e não tiver turmas, criamos uma lista vazia para não quebrar o componente
+                    lista_turmas = t_disp['turma'].tolist() if not t_disp.empty else []
+                    
+                    if not lista_turmas:
+                        st.warning("⚠️ Nota: Esta escola é nova e não possui turmas salvas no banco de dados ainda. O vínculo de infraestrutura de login será realizado mesmo assim.")
+
+                    ts = st.multiselect("Selecione as Turmas deste Docente (Deixe vazio se for carga nova)", lista_turmas)
+                    
+                    # O BOTÃO AGORA FICA FORA DE QUALQUER CONDICIONAL (SEMPRE VISÍVEL)
+                    if st.button("💾 Confirmar e Registrar Vínculos", key="btn_salvar_vinculo_adm"):
+                        if vinc_id:
+                            try:
                                 cursor = conn.cursor()
-                                for t_item in ts:
-                                    cursor.execute("""
-                                        INSERT INTO vinculo_professor_turma (professor_username, escola_id, turma, vinculo_id)
-                                        VALUES (%s,%s,%s,%s) ON CONFLICT DO NOTHING
-                                    """, (sel_p, int(sel_e_id), t_item, vinc_id))
-                                conn.commit();
-                                st.success("Vínculos processados!")
-                            else:
-                                st.error("Informe o Vínculo (Matrícula) antes de salvar.")
-                    else:
-                        st.info("Não há turmas cadastradas para esta escola.")
+                                
+                                # 1. SALVA NA TABELA INTERMEDIÁRIA (A que libera o nome da escola para o robô/app)
+                                cursor.execute("""
+                                    INSERT INTO escolas_professores (professor_id, escola_id)
+                                    VALUES (%s, %s)
+                                    ON CONFLICT DO NOTHING
+                                """, (int(id_professor_selecionado), int(sel_e_id)))
+                                
+                                # 2. SALVA NA TABELA DE TURMAS (Se houver turmas selecionadas no multiselect)
+                                if ts:
+                                    for t_item in ts:
+                                        cursor.execute("""
+                                            INSERT INTO vinculo_professor_turma (professor_username, escola_id, turma, vinculo_id)
+                                            VALUES (%s, %s, %s, %s) 
+                                            ON CONFLICT DO NOTHING
+                                        """, (sel_p, int(sel_e_id), t_item, vinc_id))
+                                
+                                conn.commit()
+                                cursor.close()
+                                st.success(f"🎉 Sucesso! Professor vinculado à escola '{sel_e_n}' com sucesso!")
+                                time.sleep(1)
+                                st.rerun()
+                                
+                            except Exception as e:
+                                st.error(f"Erro ao salvar relacionamento no Supabase: {e}")
+                                conn.rollback()
+                        else:
+                            st.error("❌ Informe o Vínculo (Matrícula) antes de salvar.")
+                else:
+                    st.info("Cadastre professores e escolas antes de criar vínculos.")
+                    
 
             # -- ABA 4: FINANCEIRO (CONTROLE DE PIX E ASSINATURAS) --
             with abas[4]:
