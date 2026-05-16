@@ -322,11 +322,11 @@ if realizar_login():
             try:
                 st.markdown("<h1 class='main-title'>📊 Lançamento de Notas</h1>", unsafe_allow_html=True)
 
-                # FILTRO DE ESCOLAS: Apenas as vinculadas ao professor logado
                 # ==============================================================================
-                # CORREÇÃO CIRÚRGICA: FILTRO DE ESCOLAS (AGORA VIA TABELA INTERMEDIÁRIA)
+                # CORREÇÃO CIRÚRGICA: FILTRO DE ESCOLAS PARA ADMIN E PROFESSOR
                 # ==============================================================================
                 if st.session_state.user_perfil == 'admin':
+                    # Se for o Renato (Admin), lista todas as escolas direto, sem restrição de tabela integradora
                     query_esc = "SELECT id, nome FROM escolas ORDER BY nome"
                 else:
                     # Busca as unidades onde o professor possui vínculo real de infraestrutura
@@ -338,7 +338,7 @@ if realizar_login():
                         WHERE u.username = '{st.session_state.username}'
                         ORDER BY e.nome
                     """
-
+                
                 escolas_df = pd.read_sql(query_esc, conn)
 
                 if not escolas_df.empty:
