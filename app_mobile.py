@@ -323,14 +323,19 @@ if realizar_login():
                 st.markdown("<h1 class='main-title'>📊 Lançamento de Notas</h1>", unsafe_allow_html=True)
 
                 # FILTRO DE ESCOLAS: Apenas as vinculadas ao professor logado
+                # ==============================================================================
+                # CORREÇÃO CIRÚRGICA: FILTRO DE ESCOLAS (AGORA VIA TABELA INTERMEDIÁRIA)
+                # ==============================================================================
                 if st.session_state.user_perfil == 'admin':
                     query_esc = "SELECT id, nome FROM escolas ORDER BY nome"
                 else:
+                    # Busca as unidades onde o professor possui vínculo real de infraestrutura
                     query_esc = f"""
                         SELECT DISTINCT e.id, e.nome 
                         FROM escolas e
-                        JOIN vinculo_professor_turma v ON e.id = v.escola_id
-                        WHERE v.professor_username = '{st.session_state.username}'
+                        JOIN escolas_professores ep ON e.id = ep.escola_id
+                        JOIN usuarios_integrador u ON ep.professor_id = u.id
+                        WHERE u.username = '{st.session_state.username}'
                         ORDER BY e.nome
                     """
 
@@ -344,9 +349,9 @@ if realizar_login():
                     with c2:
                         trimestre_selecionado = st.selectbox("📅 Trimestre Target", [1, 2, 3])
 
-                    # FILTRO DE TURMAS: Blindagem por Vínculo
+                    # FILTRO DE TURMAS BLINDADO: Não trava se a escola for nova
                     if st.session_state.user_perfil == 'admin':
-                        query_turmas = f"SELECT DISTINCT turma FROM alunos WHERE escola_id = {id_escola} AND turma IS NOT NULL ORDER BY turma"
+                        query_turmas = f"SELECT DISTINCT turma FROM alunos WHERE school_id = {id_escola} AND turma IS NOT NULL ORDER BY turma"
                     else:
                         query_turmas = f"""
                             SELECT DISTINCT turma FROM vinculo_professor_turma 
@@ -356,6 +361,8 @@ if realizar_login():
                         """
 
                     turmas_df = pd.read_sql(query_turmas, conn)
+
+                    
 
                     if not turmas_df.empty:
                         turma_nome = st.selectbox("👥 Selecione a Turma", turmas_df['turma'])
