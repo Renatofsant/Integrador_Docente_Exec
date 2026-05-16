@@ -625,15 +625,25 @@ if realizar_login():
                             if u_log and p_log and n_log:
                                 try:
                                     cursor = conn.cursor()
-                                    # Inserindo na tabela oficial com status ATIVO por padrão
+                                    username_limpo = u_log.lower().strip()
+                                    
+                                    # 1. PRIMEIRO: Inserir automaticamente na tabela pai para liberar a restrição
                                     cursor.execute(
-                                        "INSERT INTO usuarios_integrador (username, senha, nome, ativo) VALUES (%s,%s,%s,TRUE)",
-                                        (u_log.lower().strip(), p_log, n_log)
+                                        "INSERT INTO usuarios (username, password) VALUES (%s, %s) ON CONFLICT (username) DO NOTHING",
+                                        (username_limpo, p_log)
                                     )
+                                    
+                                    # 2. SEGUNDO: Inserir na tabela do integrador
+                                    cursor.execute(
+                                        "INSERT INTO usuarios_integrador (username, senha, nome, ativo) VALUES (%s, %s, %s, TRUE) ON CONFLICT (username) DO UPDATE SET senha = EXCLUDED.senha, ativo = TRUE",
+                                        (username_limpo, p_log, n_log)
+                                    )
+                                    
                                     conn.commit()
                                     st.success(f"✅ Professor {n_log} cadastrado com sucesso!")
                                     st.rerun()
                                 except Exception as e:
+                                    conn.rollback()
                                     st.error(f"Erro ao cadastrar: {e}")
                             else:
                                 st.warning("Preencha todos os campos.")
