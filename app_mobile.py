@@ -152,45 +152,63 @@ st.markdown("""
     }
 
     /* ==============================================================================
-    BLINDAGEM DO ÍCONE DO OLHO - ANTI-CRESCIMENTO (DEFINITIVO)
+    BLINDAGEM TOTAL ANTI-DEFORMAÇÃO DO OLHO (MATA AZUL E ESTICAMENTO)
     ============================================================================== */
     
-    /* Força o botão do olho a ficar invisível na estrutura de blocos e mantém tamanho fixo */
+    /* Pega diretamente o botão interno pela propriedade de controle do Streamlit */
     div[data-testid="stForm"] input[type="password"] ~ button,
-    div[data-testid="stForm"] input[type="password"] ~ button:focus,
-    div[data-testid="stForm"] input[type="password"] ~ button:active,
-    div[data-testid="stForm"] input[type="password"] ~ button:hover {
-        height: 100% !important;
-        width: 40px !important;
-        max-width: 40px !important;
-        min-width: 40px !important;
-        background: transparent !important; /* Mata o fundo azul gigante */
+    div[data-testid="stForm"] button[aria-label*="password" i],
+    div[data-testid="stForm"] button[class*="st-emotion-cache"] {
+        position: absolute !important;
+        top: 50% !important;
+        transform: translateY(-50%) !important;
+        right: 8px !important;
+        height: 28px !important; /* Altura fixa menor que o input */
+        width: 32px !important;  /* Largura fixa discreta */
+        min-width: 32px !important;
+        max-width: 32px !important;
+        background: transparent !important;
         background-color: transparent !important;
         border: none !important;
-        box-shadow: none !important; /* Remove qualquer brilho azul residual */
-        outline: none !important;
+        box-shadow: none !important;
         padding: 0 !important;
-        right: 10px !important;
-        position: absolute !important;
-        top: 0 !important;
-        transform: none !important;
-        display: flex !important;
+        margin: 0 !important;
+        display: inline-flex !important;
         align-items: center !important;
         justify-content: center !important;
+        flex-grow: 0 !important; /* Proíbe o botão de esticar para o lado */
     }
 
-    /* Reduz o tamanho real do ícone (o desenho do olho/olho cortado) para o padrão discreto */
-    div[data-testid="stForm"] input[type="password"] ~ button svg,
-    div[data-testid="stForm"] input[type="password"] ~ button:focus svg,
-    div[data-testid="stForm"] input[type="password"] ~ button:active svg {
-        width: 20px !important;
-        height: 20px !important;
-        max-width: 20px !important;
-        max-height: 20px !important;
-        fill: #64748b !important; /* Cor cinza elegante para o ícone */
-        color: #64748b !important;
+    /* Trava o estado de foco, clique e hover para não herdar o degradê azul em hipótese alguma */
+    div[data-testid="stForm"] input[type="password"] ~ button:focus,
+    div[data-testid="stForm"] input[type="password"] ~ button:active,
+    div[data-testid="stForm"] input[type="password"] ~ button:hover,
+    div[data-testid="stForm"] button[aria-label*="password" i]:focus,
+    div[data-testid="stForm"] button[aria-label*="password" i]:active {
+        background: transparent !important;
+        background-color: transparent !important;
+        box-shadow: none !important;
+        outline: none !important;
+        border: none !important;
+        width: 32px !important;
     }
-    
+
+    /* Reduz e fixa o desenho do olho (SVG) exatamente no centro do botão */
+    div[data-testid="stForm"] input[type="password"] ~ button svg,
+    div[data-testid="stForm"] button[aria-label*="password" i] svg {
+        width: 18px !important;
+        height: 18px !important;
+        max-width: 18px !important;
+        max-height: 18px !important;
+        fill: #475569 !important; /* Cinza escuro discreto */
+        color: #475569 !important;
+        margin: 0 !important;
+        padding: 0 !important;
+    }
+
+    /* ==============================================================================
+                                    Maõzinha dinâmica
+    ============================================================================== */
     
     /* Cursor de Mãozinha (UX Dinâmica) */
     div[data-baseweb="select"], div[role="button"], .stDataEditor div[role="gridcell"] {
