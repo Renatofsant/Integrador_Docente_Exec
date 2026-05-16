@@ -125,53 +125,6 @@ st.markdown("""
         font-weight: 500;
     }
 
-    /* ==============================================================================
-    PADRONIZAÇÃO DOS BOTÕES - PROJETTA PREMIUM (MESMO GRADIENT AZUL)
-    ============================================================================== */
-    
-    /* Aplica o estilo idêntico para todos os botões do app */
-    .stButton>button, 
-    .stDownloadButton>button, 
-    div[data-testid="stButton"] button,
-    div[data-testid="stDownloadButton"] button {
-        width: 100% !important;
-        border-radius: 12px !important;
-        height: 3.8em !important;
-        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important; /* Seu Gradient Azul */
-        color: white !important;
-        font-weight: 800 !important;
-        font-size: 18px !important;
-        border: none !important;
-        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275) !important;
-        opacity: 1 !important;
-        text-decoration: none !important;
-        display: flex !important;
-        align-items: center !important;
-        justify-content: center !important;
-    }
-
-    /* Comportamento de Hover Unificado e Sem Transparência */
-    .stButton>button:hover, 
-    .stDownloadButton>button:hover,
-    div[data-testid="stButton"] button:hover,
-    div[data-testid="stDownloadButton"] button:hover {
-        background: linear-gradient(135deg, #1d4ed8 0%, #60a5fa 100%) !important; /* Mantém vivo no hover */
-        color: white !important;
-        transform: scale(1.02) !important;
-        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.5) !important;
-        opacity: 1 !important;
-        border: none !important;
-    }
-
-    /* Previne esmaecimento ou perda de cor ao clicar */
-    .stButton>button:active, .stDownloadButton>button:active,
-    .stButton>button:focus, .stDownloadButton>button:focus {
-        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%) !important;
-        color: white !important;
-        opacity: 1 !important;
-        box-shadow: none !important;
-    }
-
     /* Botão de Login Ultra Vivo e Destacado */
     [data-testid="stForm"] .stButton>button {
         width: 100% !important;
