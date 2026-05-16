@@ -152,28 +152,45 @@ st.markdown("""
     }
 
     /* ==============================================================================
-    AJUSTE ESPECÍFICO PARA O ÍCONE DO OLHO (SENHA)
+    BLINDAGEM DO ÍCONE DO OLHO - ANTI-CRESCIMENTO (DEFINITIVO)
     ============================================================================== */
     
-    /* Alvo: O botão interno que contém o ícone do olho */
-    [data-testid="stForm"] input[type="password"] ~ button {
-        height: auto !important; /* Remove a altura forçada do input pai */
-        width: auto !important;  /* Remove a largura forçada */
-        padding: 0 10px !important; /* Ajusta o padding interno para centralizar */
-        background: transparent !important; /* Garante fundo transparente */
-        border: none !important; /* Remove bordas acidentais */
-        top: 50% !important;     /* Centraliza verticalmente */
-        transform: translateY(-50%) !important; /* Ajuste fino da centralização */
-        color: #94a3b8 !important; /* Define uma cor suave para o ícone */
-        right: 5px !important;   /* Posiciona corretamente à direita */
+    /* Força o botão do olho a ficar invisível na estrutura de blocos e mantém tamanho fixo */
+    div[data-testid="stForm"] input[type="password"] ~ button,
+    div[data-testid="stForm"] input[type="password"] ~ button:focus,
+    div[data-testid="stForm"] input[type="password"] ~ button:active,
+    div[data-testid="stForm"] input[type="password"] ~ button:hover {
+        height: 100% !important;
+        width: 40px !important;
+        max-width: 40px !important;
+        min-width: 40px !important;
+        background: transparent !important; /* Mata o fundo azul gigante */
+        background-color: transparent !important;
+        border: none !important;
+        box-shadow: none !important; /* Remove qualquer brilho azul residual */
+        outline: none !important;
+        padding: 0 !important;
+        right: 10px !important;
+        position: absolute !important;
+        top: 0 !important;
+        transform: none !important;
+        display: flex !important;
+        align-items: center !important;
+        justify-content: center !important;
     }
 
-    /* Alvo: O ícone SVG propriamente dito */
-    [data-testid="stForm"] input[type="password"] ~ button svg {
-        width: 18px !important;  /* Define um tamanho fixo e pequeno para o ícone */
-        height: 18px !important; /* Define um tamanho fixo e pequeno para o ícone */
+    /* Reduz o tamanho real do ícone (o desenho do olho/olho cortado) para o padrão discreto */
+    div[data-testid="stForm"] input[type="password"] ~ button svg,
+    div[data-testid="stForm"] input[type="password"] ~ button:focus svg,
+    div[data-testid="stForm"] input[type="password"] ~ button:active svg {
+        width: 20px !important;
+        height: 20px !important;
+        max-width: 20px !important;
+        max-height: 20px !important;
+        fill: #64748b !important; /* Cor cinza elegante para o ícone */
+        color: #64748b !important;
     }
-
+    
     
     /* Cursor de Mãozinha (UX Dinâmica) */
     div[data-baseweb="select"], div[role="button"], .stDataEditor div[role="gridcell"] {
