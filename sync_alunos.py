@@ -182,24 +182,33 @@ class PainelSGI(ctk.CTk):
             messagebox.showerror("Erro", str(e))
 
     def executar_fluxo(self):
-        conn = None;
+        conn = None
         driver = None
         try:
             self.withdraw()
-            opt = Options();
-            opt.add_experimental_option("detach", True);
+            opt = Options()
+            opt.add_experimental_option("detach", True)
             opt.add_argument("--start-maximized")
+            
+            # 1. INICIALIZA O NAVEGADOR UMA ÚNICA VEZ
             driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()), options=opt)
             driver.get("https://docenteonline.educacao.rj.gov.br/NovoDocente/")
+            
+            # 2. PEDE O LOGIN MANUAL APENAS UMA VEZ ANTES DE ENTRAR NO LOOP DE TURMAS
             CardInstrucao(self)
-            conn = psycopg2.connect(DB_URI);
+            
+            conn = psycopg2.connect(DB_URI)
             cursor = conn.cursor()
 
+            # 3. ENTRA NO LOOP APENAS PARA ALTERNAR AS TURMAS
             while True:
-                turma_alvo = JanelaDialogo("Identificação", "Turma aberta no portal:", "Ex: 2005").resultado
-                if not turma_alvo: break
+                turma_alvo = JanelaDialogo("Identificação", "Entre na nova turma no portal e digite o número dela aqui:", "Ex: 2005").resultado
+                if not turma_alvo: 
+                    break  # Se fechar ou clicar em cancelar, sai do robô
+                    
                 trimestre_alvo = JanelaDialogo("Trimestre", "Trimestre (1, 2 ou 3):", "1").resultado or "1"
 
+                # Script JavaScript de extração na pauta ativa
                 script_extracao = "let r=[]; document.querySelectorAll('tr').forEach(tr=>{let d=tr.querySelectorAll('td'); if(d.length>=2){let n=d[0].innerText.trim(); let s=d[1]?d[1].innerText.trim():''; if(n.length>5 && !n.includes('Aulas')) r.push({n:n, s:(s==='Matriculado'||s==='')?'Ativo':'Inativo'});}}); return r;"
                 alunos_portal = driver.execute_script(script_extracao)
 
@@ -209,8 +218,9 @@ class PainelSGI(ctk.CTk):
                         cursor.execute(
                             "INSERT INTO alunos (escola_id, nome_completo, turma, status) VALUES (2, %s, %s, %s) ON CONFLICT (escola_id, nome_completo, turma) DO UPDATE SET status = EXCLUDED.status RETURNING id",
                             (nome, turma_alvo, status))
-                        res = cursor.fetchone();
+                        res = cursor.fetchone()
                         conn.commit()
+                        
                         if res and status == "Ativo":
                             aluno_id = res[0]
                             cursor.execute(
@@ -226,8 +236,8 @@ class PainelSGI(ctk.CTk):
                                 c_f = linha.find_element(By.CSS_SELECTOR, "input[name*='.Faltas']")
 
                                 driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", c_n)
-                                time.sleep(0.1);
-                                c_n.click();
+                                time.sleep(0.1)
+                                c_n.click()
                                 c_n.clear()
                                 c_n.send_keys(str(round(soma, 1)).replace('.', ','))
 
@@ -240,7 +250,7 @@ class PainelSGI(ctk.CTk):
                                             pass
                                         driver.execute_script(
                                             "let tr=arguments[0]; let cb=tr.querySelector(\"input[type='checkbox'][name*='.PossuiRecuperacao']\"); if(cb && !cb.checked) cb.click();",
-                                            linha);
+                                            linha)
                                         time.sleep(1.2)
                                         c_r = linha.find_element(By.CSS_SELECTOR, "input.inputnotarecuperacao")
                                         driver.execute_script("arguments[0].value = arguments[1];", c_r,
@@ -248,18 +258,25 @@ class PainelSGI(ctk.CTk):
                                         driver.execute_script("arguments[0].dispatchEvent(new Event('change'));", c_r)
                                     except:
                                         pass
-                                c_f.click();
-                                c_f.clear();
+                                c_f.click()
+                                c_f.clear()
                                 c_f.send_keys(str(int(vf or 0)))
                     except Exception as e:
                         conn.rollback()
 
-                if not CardFinalizacao(self).resultado: break
+                # Pergunta se quer ir para outra turma mantendo o mesmo navegador aberto
+                if not CardFinalizacao(self).resultado: 
+                    break
+                    
             self.destroy()
         except Exception as e:
+            messagebox.showerror("Erro no Fluxo", str(e))
             self.deiconify()
         finally:
-            if conn: conn.close()
+            if conn: 
+                conn.close()
+            if driver:
+                driver.quit() # Só fecha o navegador quando você decidir sair de vez do robô
 
 
 # =================================================================
