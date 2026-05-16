@@ -368,6 +368,7 @@ if realizar_login():
                         turma_nome = st.selectbox("👥 Selecione a Turma", turmas_df['turma'])
 
                         # QUERY DE DADOS: O Coração da Blindagem (Left Join + Filtro de Username)
+                        # --- COLE ESTE BLOCO DE CÓDIGO CORRIGIDO ---
                         query_dados = f"""
                             SELECT a.id, a.nome_completo as "Aluno", 
                                    COALESCE(n.av1, 0.0) as "AV1", 
@@ -377,15 +378,16 @@ if realizar_login():
                                    (COALESCE(n.av1, 0.0) + COALESCE(n.av2, 0.0) + COALESCE(n.av3, 0.0)) as "Somatório",
                                    COALESCE(n.faltas, 0) as "Faltas"
                             FROM alunos a
+                            INNER JOIN vinculo_professor_turma v ON a.vinculo_turma_id = v.id
                             LEFT JOIN notas_bimestre n ON a.id = n.aluno_id 
                                  AND n.trimestre = {trimestre_selecionado}
                                  AND n.professor_username = '{st.session_state.username}'
                             WHERE a.escola_id = {id_escola} 
                               AND a.turma = '{turma_nome}' 
+                              AND v.professor_username = '{st.session_state.username}'
                               AND a.status = 'Ativo'
                             ORDER BY a.nome_completo
                         """
-
                         df = pd.read_sql(query_dados, conn)
                         # Limpeza de linhas técnicas do portal
                         df = df[~df['Aluno'].str.contains("Aulas previstas|Matrícula", na=False)]
