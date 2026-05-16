@@ -125,22 +125,22 @@ st.markdown("""
         font-weight: 500;
     }
 
-    /* Botão de Login Ultra Vivo e Destacado */
-    [data-testid="stForm"] .stButton>button {
-        width: 100% !important;
-        border-radius: 12px !important;
-        height: 3.8em !important;
-        background: linear-gradient(135deg, #e11d48 0%, #f97316 100%) !important; /* Degradê de Alerta/Ação */
+    /* Botão de Ação Principal */
+    .stButton>button {
+        width: 100%;
+        border-radius: 12px;
+        height: 3.8em;
+        background: linear-gradient(135deg, #1e3a8a 0%, #3b82f6 100%);
         color: white !important;
-        font-weight: 800 !important;
-        font-size: 18px !important;
-        border: none !important;
-        box-shadow: 0 4px 15px rgba(225, 29, 72, 0.4) !important;
+        font-weight: 800;
+        font-size: 18px;
+        border: none;
+        transition: all 0.4s cubic-bezier(0.175, 0.885, 0.32, 1.275);
     }
 
-    [data-testid="stForm"] .stButton>button:hover {
-        transform: scale(1.02) !important;
-        box-shadow: 0 8px 25px rgba(249, 115, 22, 0.6) !important;
+    .stButton>button:hover {
+        transform: scale(1.02);
+        box-shadow: 0 8px 20px rgba(59, 130, 246, 0.5);
     }
     
     /* Cursor de Mãozinha (UX Dinâmica) */
