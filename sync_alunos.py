@@ -104,9 +104,10 @@ class CardFinalizacao(ctk.CTkToplevel):
 # =================================================================
 
 class PainelSGI(ctk.CTk):
-    def __init__(self, usuario):
+    def __init__(self, usuario, escola_id):
         super().__init__()
         self.usuario = usuario
+        self.escola_id = escola_id
         self.title(f"Integrador Docente - {self.usuario}")
         self.geometry("500x520")
         ctk.set_appearance_mode("dark")
@@ -117,28 +118,26 @@ class PainelSGI(ctk.CTk):
         ctk.CTkLabel(self, text="INTEGRADOR DOCENTE", font=("Urbanist", 24, "bold"), text_color="#3b82f6").pack(
             pady=(30, 20))
 
-        # 💡 AJUSTE 1: Envelopado com lambda para evitar validação precoce do escopo
         self.btn_iniciar = ctk.CTkButton(self, text="🚀 INICIAR LANÇAMENTO TOTAL",
-                                         command=lambda: self.executar_fluxo(),
+                                         command=self.executar_fluxo,
                                          height=60, width=380, font=("Roboto", 16, "bold"))
         self.btn_iniciar.pack(pady=10)
 
         self.f_tools = ctk.CTkFrame(self, fg_color="transparent")
         self.f_tools.pack(pady=20)
 
-        # 💡 AJUSTE 2: Envelopado com lambda
         self.btn_sinc = ctk.CTkButton(self.f_tools, text="🔄 Sincronizar Alunos",
-                                      command=lambda: self.sincronizar_apenas_alunos(),
+                                      command=self.sincronizar_apenas_alunos,
                                       fg_color="#10b981", width=185, height=45)
         self.btn_sinc.pack(side="left", padx=5)
 
-        # 💡 AJUSTE 3: Envelopado com lambda
         self.btn_rel = ctk.CTkButton(self.f_tools, text="📊 Gerar Relatório",
-                                     command=lambda: self.gerar_relatorio_final(),
+                                     command=self.gerar_relatorio_final,
                                      fg_color="#8b5cf6", width=185, height=45)
         self.btn_rel.pack(side="left", padx=5)
 
-        self.status = ctk.CTkLabel(self, text=f"Professor logado: {self.usuario}", font=("Roboto", 11),
+        self.status = ctk.CTkLabel(self, text=f"Professor: {self.usuario} | Escola ID: {self.escola_id}",
+                                   font=("Roboto", 11),
                                    text_color="gray")
         self.status.pack(side="bottom", pady=20)
 
@@ -158,9 +157,9 @@ class PainelSGI(ctk.CTk):
 
             query_busca = """
                 SELECT id FROM vinculo_professor_turma 
-                WHERE professor_username = %s AND turma = %s AND escola_id = 2
+                WHERE professor_username = %s AND turma = %s AND escola_id = %s
             """
-            cursor.execute(query_busca, (self.usuario, turma_limpa))
+            cursor.execute(query_busca, (self.usuario, turma_limpa, self.escola_id))
             res = cursor.fetchone()
 
             if res:
@@ -169,10 +168,10 @@ class PainelSGI(ctk.CTk):
             print(f"📌 Criando novo vínculo automático para {self.usuario} na turma {turma_limpa}...")
             query_insercao = """
                 INSERT INTO vinculo_professor_turma (professor_username, escola_id, turma)
-                VALUES (%s, 2, %s)
+                VALUES (%s, %s, %s)
                 RETURNING id
             """
-            cursor.execute(query_insercao, (self.usuario, turma_limpa))
+            cursor.execute(query_insercao, (self.usuario, self.escola_id, turma_limpa))
             novo_id = cursor.fetchone()[0]
 
             cursor.connection.commit()
@@ -191,19 +190,24 @@ class PainelSGI(ctk.CTk):
         try:
             self.withdraw()
 
-            # 💡 SESSÃO CONTÍNUA: Se o driver não existe, cria o Chrome e abre o portal pela PRIMEIRA vez
             if not self.driver:
                 self.driver = webdriver.Chrome(service=Service(ChromeDriverManager().install()))
                 self.driver.get("https://docenteonline.educacao.rj.gov.br/NovoDocente/")
                 CardInstrucao(self)
 
-            while True:
-                # 💡 CORREÇÃO UX: Removemos o driver.get() daqui de dentro! O robô não força mais o redirecionamento.
+            sufixo_disciplina = ""
+            if self.usuario == "ana@leal":
+                sufixo_disciplina = " - Matemática"
+            elif self.usuario == "carla":
+                sufixo_disciplina = " - [Matéria da Carla]"
 
-                t = JanelaDialogo("Sincronia", "Mude de pauta no portal e digite a turma atualizada aqui:",
-                                  "Ex: 2005").resultado
-                if not t:
+            while True:
+                t_dig = JanelaDialogo("Sincronia", "Mude de pauta no portal e digite o número da turma aqui:",
+                                      "Ex: 2004").resultado
+                if not t_dig:
                     break
+
+                t = f"{t_dig.strip()}{sufixo_disciplina}" if self.usuario != "renato" else t_dig.strip()
 
                 conn = psycopg2.connect(DB_URI)
                 cur = conn.cursor()
@@ -228,15 +232,14 @@ class PainelSGI(ctk.CTk):
                 for a in alunos_portal:
                     cur.execute(
                         """INSERT INTO alunos (escola_id, nome_completo, turma, status, vinculo_turma_id) 
-                           VALUES (2, %s, %s, %s, %s) 
+                           VALUES (%s, %s, %s, %s, %s) 
                            ON CONFLICT (escola_id, nome_completo, turma, vinculo_turma_id) 
                            DO UPDATE SET status = EXCLUDED.status""",
-                        (a['nome'], t.strip(), a['status'], vinculo_id))
+                        (self.escola_id, a['nome'], t.strip(), a['status'], vinculo_id))
 
                 conn.commit()
                 conn.close()
 
-                # Pergunta se quer ir para a outra mantendo o navegador exatamente onde parou
                 if not CardFinalizacao(self,
                                        msg_principal=f"Alunos da turma {t} sincronizados com sucesso! Mude de pauta no portal antes de continuar.").resultado:
                     break
@@ -272,12 +275,11 @@ class PainelSGI(ctk.CTk):
         except Exception as e:
             messagebox.showerror("Erro", str(e))
 
-    def ejecutar_fluxo(self):
+    def executar_fluxo(self):
         conn = None
         try:
             self.withdraw()
 
-            # 💡 SESSÃO CONTÍNUA FLUXO TOTAL: Instancia e pede instrução manual apenas na primeira vez
             if not self.driver:
                 opt = Options()
                 opt.add_experimental_option("detach", True)
@@ -290,23 +292,17 @@ class PainelSGI(ctk.CTk):
             cursor = conn.cursor()
 
             while True:
-                # 💡 CORREÇÃO UX: Removido driver.get() interno para preservar a pauta logada do professor
-
                 turma_digitada = JanelaDialogo("Identificação",
-                                               "Mude para a próxima pauta no portal e digite o número dela aqui:",
+                                               "Informe o número da turma que está aberta no portal:",
                                                "Ex: 2005").resultado
                 if not turma_digitada:
                     break
 
-                vinculo_id = self.obter_id_vinculo_professor(cursor, turma_digitada)
-
-                if not vinculo_id:
-                    messagebox.showwarning("Erro de Vínculo",
-                                           f"A pauta {turma_digitada} está sem vínculo cadastrado.")
-                    break
+                turma_alvo = turma_digitada.strip()
+                vinculo_id = self.obter_id_vinculo_professor(cursor, turma_alvo)
 
                 trimestre_alvo = JanelaDialogo("Trimestre", "Trimestre (1, 2 ou 3):", "1").resultado or "1"
-                time.sleep(1)
+                time.sleep(2)
 
                 script_extracao = "let r=[]; document.querySelectorAll('tr').forEach(tr=>{let d=tr.querySelectorAll('td'); if(d.length>=2){let n=d[0].innerText.trim(); let s=d[1]?d[1].innerText.trim():''; if(n.length>5 && !n.includes('Aulas')) r.push({n:n, s:(s==='Matriculado'||s==='')?'Ativo':'Inativo'});}}); return r;"
                 alunos_portal = self.driver.execute_script(script_extracao)
@@ -319,58 +315,96 @@ class PainelSGI(ctk.CTk):
                 for aluno in alunos_portal:
                     nome, status = aluno['n'], aluno['s']
                     try:
-                        cursor.execute(
-                            """INSERT INTO alunos (escola_id, nome_completo, turma, status, vinculo_turma_id) 
-                               VALUES (2, %s, %s, %s, %s) 
-                               ON CONFLICT (escola_id, nome_completo, turma, vinculo_turma_id) 
-                               DO UPDATE SET status = EXCLUDED.status 
-                               RETURNING id""",
-                            (nome, turma_digitada.strip(), status, vinculo_id))
-                        res = cursor.fetchone()
+                        # 💡 ALINHAMENTO COM O CÓDIGO SIMPLES: Força escola_id = 2 fixa para teste igualzinho ao seu código funcional
+                        escola_teste = 2
+
+                        cursor.execute("""
+                            SELECT id FROM alunos 
+                            WHERE escola_id = %s AND nome_completo = %s AND turma = %s
+                        """, (escola_teste, nome, turma_alvo))
+                        aluno_data = cursor.fetchone()
+
+                        if aluno_data:
+                            aluno_id = aluno_data[0]
+                            cursor.execute("""
+                                UPDATE alunos 
+                                SET status = %s, vinculo_turma_id = %s 
+                                WHERE id = %s
+                            """, (status, vinculo_id, aluno_id))
+                        else:
+                            cursor.execute("""
+                                INSERT INTO alunos (escola_id, nome_completo, turma, status, vinculo_turma_id) 
+                                VALUES (%s, %s, %s, %s, %s) 
+                                RETURNING id
+                            """, (escola_teste, nome, turma_alvo, status, vinculo_id))
+                            aluno_id = cursor.fetchone()[0]
+
                         conn.commit()
 
-                        if res and status == "Ativo":
-                            aluno_id = res[0]
-                            cursor.execute(
-                                "SELECT av1, av2, av3, recuperacao, faltas FROM notas_bimestre WHERE aluno_id = %s AND trimestre = %s AND professor_username = %s",
-                                (aluno_id, int(trimestre_alvo), self.usuario))
+                        if status == "Ativo":
+                            cursor.execute("""
+                                                        SELECT av1, av2, av3, recuperacao, faltas FROM notas_bimestre 
+                                                        WHERE aluno_id = %s AND trimestre = %s
+                                                    """, (aluno_id, int(trimestre_alvo)))
                             nota_data = cursor.fetchone()
 
                             if nota_data:
-                                v1, v2, v3, vr, vf = nota_data
-                                soma = float(v1 or 0) + float(v2 or 0) + float(v3 or 0)
-                                linha = self.driver.find_element(By.XPATH, f"//tr[td[contains(text(), '{nome}')]]")
-                                c_n = linha.find_element(By.CSS_SELECTOR, "input[name*='.NotaProva']")
-                                c_f = linha.find_element(By.CSS_SELECTOR, "input[name*='.Faltas']")
+                                v_av1, v_av2, v_av3, v_rec, v_faltas = nota_data
+                                somatorio = float(v_av1 or 0) + float(v_av2 or 0) + float(v_av3 or 0)
 
-                                self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", c_n)
+                                # Localiza a linha e os campos do aluno na SEEDUC
+                                xpath_linha = f"//tr[td[contains(text(), '{nome}')]]"
+                                linha = self.driver.find_element(By.XPATH, xpath_linha)
+                                campo_n = linha.find_element(By.CSS_SELECTOR, "input[name*='.NotaProva']")
+                                campo_f = linha.find_element(By.CSS_SELECTOR, "input[name*='.Faltas']")
+
+                                # 1. Sempre lança o somatório original no campo principal
+                                self.driver.execute_script("arguments[0].scrollIntoView({block: 'center'});", campo_n)
                                 time.sleep(0.1)
-                                c_n.click()
-                                c_n.clear()
-                                c_n.send_keys(str(round(soma, 1)).replace('.', ','))
+                                campo_n.click()
+                                campo_n.clear()
+                                campo_n.send_keys(str(round(somatorio, 1)).replace('.', ','))
 
-                                if soma < 5.0:
+                                # 2. Condicional da SEEDUC: Se a nota foi baixa, abre e preenche a recuperação
+                                if somatorio < 5.0:
                                     try:
                                         try:
-                                            WebDriverWait(self.driver, 2).until(EC.alert_is_present())
+                                            WebDriverWait(self.driver, 3).until(EC.alert_is_present())
                                             self.driver.switch_to.alert.accept()
+                                            time.sleep(1.0)
                                         except:
                                             pass
-                                        self.driver.execute_script(
-                                            "let tr=arguments[0]; let cb=tr.querySelector(\"input[type='checkbox'][name*='.PossuiRecuperacao']\"); if(cb && !cb.checked) cb.click();",
-                                            linha)
-                                        time.sleep(1.2)
-                                        c_r = self.driver.find_element(By.CSS_SELECTOR, "input.inputnotarecuperacao")
-                                        self.driver.execute_script("arguments[0].value = arguments[1];", c_r,
-                                                                   str(round(float(vr or 0), 1)).replace('.', ','))
+
+                                        # Ativa o checkbox para fazer o portal exibir o campo numérico
+                                        self.driver.execute_script("""
+                                                                    let linha = arguments[0];
+                                                                    let cb = linha.querySelector("input[type='checkbox'][name*='.PossuiRecuperacao']");
+                                                                    if (cb && !cb.checked) { cb.click(); }
+                                                                """, linha)
+                                        time.sleep(1.5)
+
+                                        # Captura o campo de recuperação que apareceu na tela e injeta o valor
+                                        campo_rec = linha.find_element(By.CSS_SELECTOR, "input.inputnotarecuperacao")
+                                        self.driver.execute_script("arguments[0].value = arguments[1];", campo_rec,
+                                                                   str(round(float(v_rec or 0.0), 1)).replace('.', ','))
+
+                                        # Dispara os eventos para o portal da SEEDUC salvar a alteração na linha
                                         self.driver.execute_script("arguments[0].dispatchEvent(new Event('change'));",
-                                                                   c_r)
-                                    except:
-                                        pass
-                                c_f.click()
-                                c_f.clear()
-                                c_f.send_keys(str(int(vf or 0)))
+                                                                   campo_rec)
+                                        self.driver.execute_script("arguments[0].dispatchEvent(new Event('blur'));",
+                                                                   campo_rec)
+
+                                        print(f"[OK] Recuperação lançada para {nome}")
+                                    except Exception as eRec:
+                                        print(f"Aviso: Falha na recuperação de {nome}: {eRec}")
+
+                                # 3. Preenche as Faltas
+                                campo_f.click()
+                                campo_f.clear()
+                                campo_f.send_keys(str(int(v_faltas or 0)))
+
                     except Exception as e:
+                        print(f"Erro ao processar {nome}: {e}")
                         conn.rollback()
 
                 if not CardFinalizacao(self,
@@ -390,10 +424,13 @@ class PainelSGI(ctk.CTk):
 # =================================================================
 
 class TelaLogin(ctk.CTk):
+    USER_FINAL = None
+    ESCOLA_FINAL = None
+
     def __init__(self):
         super().__init__()
         self.title("🛡️ Acesso Integrador Docente")
-        self.geometry("420x560")
+        self.geometry("420x620")  # Aumentado ligeiramente para o novo robô se destacar
         self.eval('tk::PlaceWindow . center')
         self.attributes("-topmost", True)
         self.configure(fg_color="#1a1a1a")
@@ -401,11 +438,13 @@ class TelaLogin(ctk.CTk):
         self.grid_columnconfigure(0, weight=1)
 
         try:
-            img_path = recurso_path("logo_robot.png")
+            # 💡 SALVE A IMAGEM COMO "logo_robot.png" NA SUA PASTA DE PROJETO
+            img_path = recurso_path("6.png")
             img_original = Image.open(img_path)
-            self.logo_image = ctk.CTkImage(light_image=img_original, dark_image=img_original, size=(90, 90))
+            # Tamanho ajustado para 180x180 para dar destaque ao robô com o terminal holográfico
+            self.logo_image = ctk.CTkImage(light_image=img_original, dark_image=img_original, size=(180, 180))
             self.logo_label = ctk.CTkLabel(self, text="", image=self.logo_image)
-            self.logo_label.grid(row=0, column=0, pady=(40, 10), sticky="ew")
+            self.logo_label.grid(row=0, column=0, pady=(30, 5), sticky="ew")
         except Exception as e:
             self.logo_label = ctk.CTkLabel(self, text="[LOGO]", font=("Roboto", 14), text_color="gray")
             self.logo_label.grid(row=0, column=0, pady=(40, 10))
@@ -442,18 +481,72 @@ class TelaLogin(ctk.CTk):
             cur.execute("SELECT username FROM usuarios_integrador WHERE username=%s AND senha=%s AND ativo=TRUE",
                         (user, senha))
             res = cur.fetchone()
-            conn.close()
+
             if res:
                 self.usuario_logado = res[0]
-                self.destroy()
+                self.withdraw()
+
+                # Captura inteligente por nome da escola (SaaS Universal)
+                dialogo = JanelaDialogo("Identificação do Colégio",
+                                        "Digite o nome (ou parte do nome) da Escola para o lançamento:",
+                                        "Ex: Agripino, Nazareth...")
+                nome_escola_digitado = dialogo.resultado
+
+                if not nome_escola_digitado or not nome_escola_digitado.strip():
+                    messagebox.showwarning("Aviso", "Nome da escola não pode ser vazio. Login cancelado.")
+                    self.deiconify()
+                    cur.close();
+                    conn.close()
+                    return
+
+                termo_busca = f"%{nome_escola_digitado.strip()}%"
+                cur.execute("SELECT id, nome FROM escolas WHERE nome ILIKE %s LIMIT 1", (termo_busca,))
+                escola_data = cur.fetchone()
+
+                if escola_data:
+                    id_real_escola = escola_data[0]
+                    nome_real_escola = escola_data[1]
+
+                    messagebox.showinfo("Escola Identificada", f"Conectado com sucesso ao:\n{nome_real_escola}")
+
+                    TelaLogin.USER_FINAL = self.usuario_logado
+                    TelaLogin.ESCOLA_FINAL = id_real_escola
+
+                    print(
+                        f"[SAAS SYSTEM] Lançador pronto para a escola: {nome_real_escola} (ID: {TelaLogin.ESCOLA_FINAL})")
+
+                    cur.close();
+                    conn.close()
+                    self.quit()
+                    self.destroy()
+                else:
+                    cur.execute("SELECT nome FROM escolas ORDER BY nome ASC")
+                    todas_escolas = cur.fetchall()
+                    lista_nomes = "\n".join([f"- {e[0]}" for e in todas_escolas])
+
+                    messagebox.showerror("Erro de Identificação",
+                                         f"Não encontramos nenhuma escola com o termo '{nome_escola_digitado}'.\n\nEscolas disponíveis no sistema:\n{lista_nomes}")
+                    self.deiconify()
+                    cur.close();
+                    conn.close()
+                    return
             else:
+                conn.close()
                 self.msg.configure(text="Acesso negado ou conta suspensa.")
-        except:
-            self.msg.configure(text="Erro de conexão.")
+        except Exception as e:
+            self.msg.configure(text=f"Erro de conexão: {str(e)}")
 
 
+# =================================================================
+# INICIALIZAÇÃO DA APLICAÇÃO SAAS
+# =================================================================
 if __name__ == "__main__":
     login = TelaLogin()
     login.mainloop()
-    if login.usuario_logado:
-        PainelSGI(usuario=login.usuario_logado).mainloop()
+
+    usuario_final = TelaLogin.USER_FINAL
+    escola_final = TelaLogin.ESCOLA_FINAL
+
+    if usuario_final:
+        app_painel = PainelSGI(usuario=usuario_final, escola_id=escola_final)
+        app_painel.mainloop()
